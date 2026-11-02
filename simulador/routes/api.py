@@ -6,6 +6,7 @@ import secrets
 import time
 from flask import Blueprint, jsonify, request
 from ..data.geo import ESTADOS, PAISES, ESTADOS_POR_UF
+from ..data.historia import PRESIDENTES, ERAS, GOVERNADORES
 from ..data.politica import PARTIDOS, IDEOLOGIAS, PROPOSTAS, PASTAS, LEIS, CENARIOS, SETORES, ROTULO_SETOR
 from ..db import get_db, transacao, carregar_jogo, salvar_estado, salvar_relatorio
 from ..engine import acoes, estado as est, multiplayer, visao
@@ -20,6 +21,20 @@ def erro(msg, status=400, **extra):
 
 def _texto(v, limite):
     return re.sub(r"\s+", " ", str(v or "")).strip()[:limite]
+
+
+CHAVES_APARENCIA = {"rosto", "pele", "olhos", "cor_olhos", "sobrancelha", "boca", "cabelo", "cor_cabelo", "barba", "traje", "cor_traje",
+                    "gravata", "oculos", "acessorio", "faixa", "fundo", "rugas"}
+
+
+def _aparencia(ap):
+    """Só aceita chaves conhecidas e valores simples (ids ou cores #rrggbb)."""
+    out = {}
+    for k, v in (ap or {}).items() if isinstance(ap, dict) else []:
+        v = str(v)
+        if k in CHAVES_APARENCIA and re.fullmatch(r"#[0-9a-fA-F]{6}|[a-z0-9_]{1,20}", v):
+            out[k] = v
+    return out
 
 
 def _jogador(db, codigo):
@@ -43,7 +58,26 @@ def catalogo():
         "leis": {k: {kk: vv for kk, vv in v.items() if kk != "efeitos"} for k, v in LEIS.items()},
         "pastas": PASTAS, "cenarios": {k: {"nome": v["nome"], "desc": v["desc"]} for k, v in CENARIOS.items()},
         "setores": SETORES, "rotulo_setor": ROTULO_SETOR, "papeis": multiplayer.PAPEIS,
+        "presidentes": PRESIDENTES, "eras": ERAS, "governadores": {uf: {"nome": n, "partido": p} for uf, (n, p) in GOVERNADORES.items()},
     })
+
+
+@bp.post("/jogos/resumos")
+def resumos():
+    """Resumo das partidas salvas neste navegador (botão Continuar)."""
+    cods = [str(c).upper()[:5] for c in ((request.get_json(silent=True) or {}).get("codigos") or [])][:20]
+    db = get_db()
+    out = []
+    for cod in cods:
+        row, estado = carregar_jogo(db, cod)
+        if not row:
+            continue
+        m = estado["meta"]
+        out.append({"codigo": cod, "nome": estado["jogador"]["nome"], "partido": estado["jogador"]["partido"], "modo": m["modo"],
+                    "rotulo": m["rotulo"], "ano": m["ano"], "tri": m["trimestre"], "fase": m["fase"], "encerrado": m["encerrado"],
+                    "popularidade": round(estado["popularidade"]), "aparencia": estado["jogador"].get("aparencia", {}), "atualizado": row["atualizado"]})
+    out.sort(key=lambda x: -x["atualizado"])
+    return jsonify(out)
 
 
 @bp.get("/ranking")
@@ -65,13 +99,28 @@ def criar_jogo():
     siglas = {p["sigla"] for p in PARTIDOS}
     cfg = {"modo": d["modo"], "duracao": d["duracao"], "ideologia": d["ideologia"], "cenario": d.get("cenario"),
            "nome": _texto(d.get("nome"), 40), "propostas": [p for p in (d.get("propostas") or []) if p in PROPOSTAS],
-           "uf": d.get("uf"), "aparencia": {k: _texto(v, 20) for k, v in (d.get("aparencia") or {}).items()}}
+           "uf": d.get("uf"), "aparencia": _aparencia(d.get("aparencia")), "genero": d.get("genero") if d.get("genero") in ("m", "f", "neutro") else "neutro"}
+    try:
+        idade = int(d.get("idade") or 35)
+    except (TypeError, ValueError):
+        idade = 35
+    minimo = 35 if d["modo"] == "presidente" else 30  # idade mínima constitucional (art. 14, §3º)
+    if not minimo <= idade <= 80:
+        return erro(f"A idade deve ficar entre {minimo} e 80 anos para esse cargo.")
+    cfg["idade"] = idade
     if sigla in siglas:
         cfg["partido"] = sigla
     elif d.get("partido_novo"):
         if not re.fullmatch(r"[A-Z0-9]{2,6}", sigla):
             return erro("A sigla do novo partido deve ter de 2 a 6 letras/números.")
         cfg["partido"], cfg["partido_nome"] = sigla, _texto(d.get("partido_nome"), 50) or sigla
+        cor = str(d.get("partido_cor") or "")
+        cfg["partido_cor"] = cor if re.fullmatch(r"#[0-9a-fA-F]{6}", cor) else "#7c5cff"
+        try:
+            num = int(d.get("partido_numero"))
+            cfg["partido_numero"] = num if 10 <= num <= 99 and num not in {p["numero"] for p in PARTIDOS} else None
+        except (TypeError, ValueError):
+            cfg["partido_numero"] = None
     else:
         return erro("Escolha um partido.")
     if d["modo"] == "governador" and d.get("uf") not in ESTADOS_POR_UF:

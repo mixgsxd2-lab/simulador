@@ -37,7 +37,7 @@ def bot(estado, rng):
 
 
 def rodar(modo, duracao, rng):
-    cfg = {"modo": modo, "duracao": duracao, "partido": "MDCI", "ideologia": rng.choice(["liberal", "social_democrata", "centrista", "conservador"]),
+    cfg = {"modo": modo, "duracao": duracao, "partido": "MDB", "ideologia": rng.choice(["liberal", "social_democrata", "centrista", "conservador"]),
            "propostas": ["emprego", "saude"], "uf": rng.choice(["SP", "PI", "DF"]) if modo == "governador" else None}
     s = est.novo_jogo(cfg)
     for _ in range(400):

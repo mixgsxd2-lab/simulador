@@ -1,6 +1,7 @@
 """Criação de uma nova partida (RUN)."""
 import random
 from ..data.geo import ESTADOS_POR_UF
+from ..data.historia import GOVERNADORES
 from ..data.politica import IDEOLOGIAS, PROPOSTAS, PASTAS, CENARIOS, NOMES, SOBRENOMES, PARTIDOS
 from . import congresso, diplomacia, eleicoes, economia
 from .util import aplicar_efeitos, noticia, clamp, get_path
@@ -55,7 +56,8 @@ def novo_jogo(cfg):
     partido = cfg["partido"]
     siglas = {p["sigla"]: p for p in PARTIDOS}
     jogador = {"nome": (cfg.get("nome") or "").strip() or f"{rng.choice(NOMES)} {rng.choice(SOBRENOMES)}",
-               "idade": 35, "partido": partido, "partido_nome": siglas[partido]["nome"] if partido in siglas else cfg.get("partido_nome", partido),
+               "idade": int(cfg.get("idade") or 35), "partido": partido, "partido_cor": cfg.get("partido_cor"), "partido_numero": cfg.get("partido_numero"),
+               "genero": cfg.get("genero") or "neutro", "partido_nome": siglas[partido]["nome"] if partido in siglas else cfg.get("partido_nome", partido),
                "ideologia": cfg["ideologia"], "eco": ideo["eco"], "soc": ideo["soc"],
                "propostas": [p for p in cfg.get("propostas", []) if p in PROPOSTAS][:4],
                "aparencia": cfg.get("aparencia") or {}, "carisma": rng.randint(40, 70) + (8 if cfg["ideologia"] in ("nacionalista", "socialista") else 0)}
@@ -80,7 +82,7 @@ def novo_jogo(cfg):
         "meta": {"modo": modo, "escopo": escopo, "duracao": cfg["duracao"], "uf": uf, "rotulo": rotulo, "cenario": cenario,
                  "turno": 0, "ano": 2026, "trimestre": 1, "mandato": 0, "turno_mandato": 0, "fase": "campanha",
                  "max_mandatos": DURACOES[cfg["duracao"]], "encerrado": False, "resultado": None, "eventos_total": 0,
-                 "populacao_m": pop_m},
+                 "populacao_m": pop_m, "antecessor": ("{} ({})".format(*GOVERNADORES[uf]) if uf else "Luiz Inácio Lula da Silva (PT)")},
         "jogador": jogador, "popularidade": 45.0, "capital": 5,
         "economia": {"pib_bi": pib, "crescimento": 2.0, "inflacao": 4.5, "desemprego": round(desemp, 2), "selic": 10.5,
                      "divida_pib": round(divida_pib, 2), "divida_bi": pib * divida_pib / 100, "caixa": pib * 0.02, "cambio": 5.2,

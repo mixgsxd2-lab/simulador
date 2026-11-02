@@ -1,8 +1,9 @@
 {% extends "base.html" %}
-{% block titulo %}Partida {{ codigo }} · Simulador de Presidente{% endblock %}
+{% block titulo %}Partida {{ codigo }} · Simulador Presidencial{% endblock %}
+{% block estilos %}<link rel="stylesheet" href="{{ url_for('static', filename='css/jogo.css') }}">{% endblock %}
 {% block body_attrs %}data-codigo="{{ codigo }}"{% endblock %}
 {% block corpo %}
-<div id="jogo"><div class="glass">Carregando partida…</div></div>
+<div id="jogo"><div class="veu"><div class="coluna" style="align-items:center"><span class="spinner"></span><span class="suave">Carregando o Planalto…</span></div></div></div>
 <div id="modal-raiz"></div>
 {% endblock %}
 {% block scripts %}

@@ -1,6 +1,7 @@
 """Diplomacia: relações, tratados, alianças, sanções, ONU e guerras (modo presidente);
 relações federativas (modo governador)."""
 from ..data.geo import PAISES, ESTADOS, PAISES_POR_COD
+from ..data.historia import GOVERNADORES
 from .util import clamp, aplicar_efeitos, noticia, gastar_ou_receber
 
 
@@ -12,7 +13,8 @@ def montar(rng, estado_modo, uf=None):
                for p in PAISES if p["cod"] != "BRA"}
     else:
         ent = {e["uf"]: {"cod": e["uf"], "nome": e["nome"], "rel": clamp(50 + rng.uniform(-12, 12), 20, 80), "tratado": False,
-                         "alianca": False, "sancao": False, "guerra": False, "militar": 0, "pib": e["pib"], "regime": "", "bloco": e["regiao"], "jogador": None}
+                         "alianca": False, "sancao": False, "guerra": False, "militar": 0, "pib": e["pib"], "regime": "", "bloco": e["regiao"], "jogador": None,
+                         "lider": "{} ({})".format(*GOVERNADORES[e["uf"]])}
                for e in ESTADOS if e["uf"] != uf}
     return {"entidades": ent, "onu": 50.0, "militar": 55.0, "guerras": [], "assento_conselho": False}
 

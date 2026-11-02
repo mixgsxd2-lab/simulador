@@ -20,15 +20,22 @@ def montar(rng, escopo, jogador, total_baixa, total_alta):
     pesos = {s: p["peso"] for s, p in partidos.items()}
     if jogador["partido"] not in partidos:  # partido criado pelo jogador
         ideo = IDEOLOGIAS[jogador["ideologia"]]
-        partidos[jogador["partido"]] = {"sigla": jogador["partido"], "nome": jogador["partido_nome"], "eco": ideo["eco"], "soc": ideo["soc"], "peso": 22}
+        partidos[jogador["partido"]] = {"sigla": jogador["partido"], "nome": jogador["partido_nome"], "eco": ideo["eco"], "soc": ideo["soc"], "peso": 22,
+                                        "cor": jogador.get("partido_cor", "#7c5cff"), "numero": jogador.get("partido_numero")}
         pesos[jogador["partido"]] = 22
-    baixa = _distribuir(pesos, total_baixa, rng)
-    alta = _distribuir(pesos, total_alta, rng) if total_alta else {s: 0 for s in pesos}
+    reais = escopo == "nacional" and len(partidos) == len(PARTIDOS)
+    if reais:  # bancadas reais (eleição de 2022, com fusões)
+        baixa = {s: p["peso"] for s, p in partidos.items()}
+        alta = {s: p.get("alta", 0) for s, p in partidos.items()}
+    else:
+        baixa = _distribuir(pesos, total_baixa, rng)
+        alta = _distribuir({s: p.get("alta", 0) + 1 for s, p in partidos.items()}, total_alta, rng) if total_alta else {s: 0 for s in pesos}
     out = {}
     for s, p in partidos.items():
         d = distancia(jogador["eco"], jogador["soc"], p["eco"], p["soc"])
-        afin = 71 - 54 * d + (14 if s == jogador["partido"] else 0) + rng.uniform(-4, 4)
+        afin = 66 - 54 * d + (14 if s == jogador["partido"] else 0) + rng.uniform(-4, 4)
         out[s] = {"sigla": s, "nome": p["nome"], "eco": p["eco"], "soc": p["soc"], "baixa": baixa[s], "alta": alta[s],
+                  "cor": p.get("cor", "#7a8699"), "numero": p.get("numero"),
                   "afin": round(clamp(afin, 5, 95), 2), "favores": 0.0, "ministros": 0, "jogador": s == jogador["partido"]}
     return {"partidos": out, "total_baixa": total_baixa, "total_alta": total_alta, "leis_aprovadas": [], "leis_rejeitadas": [], "leis_derrubadas": []}
 
@@ -53,7 +60,7 @@ def passo(estado, rng):
     bonus_casa = (ministro_bonus(estado))
     for p in c["partidos"].values():
         d = distancia(jog["eco"], jog["soc"], p["eco"], p["soc"])
-        alvo = 71 - 54 * d + (pop - 50) * 0.35 + 8 * min(p["ministros"], 2) + p["favores"] + bonus_casa + (10 if p["jogador"] else 0)
+        alvo = 66 - 54 * d + (pop - 50) * 0.35 + 8 * min(p["ministros"], 2) + p["favores"] + bonus_casa + (10 if p["jogador"] else 0)
         p["afin"] = round(clamp(p["afin"] + 0.25 * (alvo - p["afin"]) + rng.uniform(-1, 1), 0, 100), 2)
         p["favores"] = round(p["favores"] * 0.85, 2)
 

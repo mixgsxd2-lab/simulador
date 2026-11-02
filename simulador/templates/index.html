@@ -1,38 +1,59 @@
 {% extends "base.html" %}
+{% block estilos %}<link rel="stylesheet" href="{{ url_for('static', filename='css/menu.css') }}">{% endblock %}
 {% block corpo %}
-<header class="topo">
-  <a class="marca" href="/"><img src="{{ url_for('static', filename='img/logo.jpg') }}" alt="Logo"><div><b>Simulador de Presidente</b><span>do Brasil</span></div></a>
-  <div class="espaco"></div>
-  <button class="btn" onclick="Tema.alternar()">◐ Tema</button>
-</header>
+<div class="cena" aria-hidden="true">
+  <div class="cena-feixe"></div>
+  <div class="cena-mapa" id="cena-mapa"></div>
+  <div id="cena-particulas"></div>
+  <div class="cena-vinheta"></div>
+</div>
 
-<section class="glass hero">
-  <img src="{{ url_for('static', filename='img/logo.jpg') }}" alt="Logo do simulador">
-  <div style="flex:1;min-width:240px">
-    <h1 style="font-size:1.8rem">Governe o Brasil. Ou um estado.</h1>
-    <p class="suave mb0">Campanha, debates, Congresso, STF, economia, diplomacia e eleições — em partidas (RUNS) independentes, com eventos e cenários variáveis. Você começa aos 35 anos.</p>
-  </div>
-</section>
-
-<div id="app" class="grid g-main mt">
-  <form id="form" class="col" autocomplete="off"></form>
-  <aside class="col">
-    <div class="glass">
-      <h2>Entrar em partida multiplayer</h2>
-      <p class="suave peq">Peça o código ao anfitrião. Você pode ser governador, ministro, parlamentar ou líder de outro país.</p>
-      <div class="col">
-        <label class="campo">Código da partida<input type="text" id="j-codigo" maxlength="5" placeholder="ABC12" style="text-transform:uppercase"></label>
-        <label class="campo">Seu nome<input type="text" id="j-nome" maxlength="30"></label>
-        <label class="campo">Papel<select id="j-papel"></select></label>
-        <label class="campo" id="j-pais-box" hidden>Posição<select id="j-pais"></select></label>
-        <button type="button" class="btn prim" id="j-entrar">Entrar</button>
+<main>
+  <section class="tela" id="tela-titulo">
+    <div class="titulo-grade">
+      <div>
+        <div class="marca-grande entra">
+          <div class="selo-logo"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="48"/></svg>
+            <img src="{{ url_for('static', filename='img/logo.jpg') }}" alt="Logo do Simulador Presidencial"></div>
+          <div><div class="sobretitulo">Simulador presidencial</div><div class="fraco peq">Brasil · edição 2027</div></div>
+        </div>
+        <h1 class="titulo-hero entra" style="--i:1">Presidente <em>do Brasil</em></h1>
+        <p class="lema entra" style="--i:2">Vença a eleição, negocie com o Congresso, enfrente o STF, a imprensa e as crises — e tente sair do Planalto com a história a seu favor.</p>
+        <nav class="menu-lista" aria-label="Menu principal">
+          <button type="button" class="item-menu principal" style="--i:0" data-ir="novo"><span class="ico-caixa"><svg class="ico g" viewBox="0 0 24 24"><polygon points="6 3 20 12 6 21 6 3"/></svg></span>
+            <span><b>Nova campanha</b><small>Presidente ou governador, partido real ou próprio</small></span><svg class="ico seta" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></button>
+          <button type="button" class="item-menu" style="--i:1" data-ir="continuar" id="item-continuar" hidden><span class="ico-caixa"><svg class="ico g" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>
+            <span><b>Continuar</b><small>Partidas salvas</small></span><svg class="ico seta" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></button>
+          <button type="button" class="item-menu" style="--i:2" data-ir="multi"><span class="ico-caixa"><svg class="ico g" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+            <span><b>Multiplayer</b><small>Entre como governador, ministro, parlamentar ou líder estrangeiro</small></span><svg class="ico seta" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></button>
+          <button type="button" class="item-menu" style="--i:3" data-ir="galeria"><span class="ico-caixa"><svg class="ico g" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></span>
+            <span><b>Galeria presidencial</b><small>Presidentes desde 1889 e governadores atuais</small></span><svg class="ico seta" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></button>
+          <button type="button" class="item-menu" style="--i:4" data-ir="ranking"><span class="ico-caixa"><svg class="ico g" viewBox="0 0 24 24"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg></span>
+            <span><b>Ranking</b><small>As melhores partidas</small></span><svg class="ico seta" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></button>
+          <button type="button" class="item-menu" style="--i:5" data-ir="ajustes"><span class="ico-caixa"><svg class="ico g" viewBox="0 0 24 24"><line x1="4" x2="4" y1="21" y2="14"/><line x1="4" x2="4" y1="10" y2="3"/><line x1="12" x2="12" y1="21" y2="12"/><line x1="12" x2="12" y1="8" y2="3"/><line x1="20" x2="20" y1="21" y2="16"/><line x1="20" x2="20" y1="12" y2="3"/><line x1="2" x2="6" y1="14" y2="14"/><line x1="10" x2="14" y1="8" y2="8"/><line x1="18" x2="22" y1="16" y2="16"/></svg></span>
+            <span><b>Configurações</b><small>Tema claro/escuro, animações e dados</small></span><svg class="ico seta" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></button>
+        </nav>
       </div>
+      <aside class="vidro vitrine" id="vitrine"><div class="esqueleto" style="height:260px;border-radius:16px"></div></aside>
     </div>
-    <div class="glass">
-      <h2>Melhores RUNS</h2>
-      <div id="ranking" class="suave peq">Carregando…</div>
-    </div>
-  </aside>
+    <footer class="rodape-menu"><span>v2.0</span><span>Dados reais: TSE · IBGE · Natural Earth · Wikipédia</span><span class="espaco"></span><span>Eventos e resultados durante a partida são simulados.</span>
+      <button type="button" class="btn btn-icone btn-mini" onclick="Tema.alternar()" aria-label="Alternar tema"><svg class="ico p" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg></button></footer>
+  </section>
+  <section class="tela" id="tela-novo"></section>
+  <section class="tela" id="tela-continuar"></section>
+  <section class="tela" id="tela-multi"></section>
+  <section class="tela" id="tela-galeria"></section>
+  <section class="tela" id="tela-ranking"></section>
+  <section class="tela" id="tela-ajustes"></section>
+</main>
+
+<div class="carregando" id="carregando" hidden role="status">
+  <div class="caixa">
+    <div class="selo-logo"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="48"/></svg><img src="{{ url_for('static', filename='img/logo.jpg') }}" alt=""></div>
+    <div class="sobretitulo">Preparando a campanha</div>
+    <div class="msg">…</div>
+    <div class="medidor"><i style="width:0%"></i></div>
+  </div>
 </div>
 {% endblock %}
-{% block scripts %}<script src="{{ url_for('static', filename='js/setup.js') }}"></script>{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/menu.js') }}"></script>{% endblock %}

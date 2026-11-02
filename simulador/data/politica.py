@@ -1,19 +1,31 @@
 """Catálogos políticos: partidos, ideologias, propostas, ministérios, leis e cenários."""
 
+# Partidos brasileiros reais. Fatos: sigla, nome, número eleitoral e ano de fundação/registro (origem).
+# Bancadas = deputados eleitos em 2022 (TSE), somando fusões posteriores (PRD = Patriota+PTB; Podemos += PSC;
+# Solidariedade += PROS); Senado = composição aproximada de 2023. Cores e posições (eco/soc) são estimativas
+# da simulação, não classificações oficiais.
 # eco: -1 (estatista/esquerda) .. +1 (liberal/direita); soc: -1 (progressista) .. +1 (conservador)
 PARTIDOS = [
-    {"sigla": "UNPO", "nome": "União Nacional Popular", "eco": -0.8, "soc": -0.5, "peso": 70},
-    {"sigla": "PRAV", "nome": "Partido Renovação Ambiental e Verde", "eco": -0.3, "soc": -0.8, "peso": 25},
-    {"sigla": "PSDC", "nome": "Social Democracia Cidadã", "eco": -0.4, "soc": -0.3, "peso": 55},
-    {"sigla": "MDCI", "nome": "Movimento Democrático e Cívico", "eco": 0.0, "soc": 0.0, "peso": 60},
-    {"sigla": "PLRF", "nome": "Partido Liberal Reformista", "eco": 0.8, "soc": -0.1, "peso": 70},
-    {"sigla": "PCNA", "nome": "Partido Conservador Nacional", "eco": 0.4, "soc": 0.8, "peso": 40},
-    {"sigla": "PNPA", "nome": "Partido Nacionalista Patriota", "eco": 0.2, "soc": 0.9, "peso": 45},
-    {"sigla": "PTNC", "nome": "Trabalhista Nacional e Cooperativista", "eco": -0.5, "soc": 0.1, "peso": 35},
-    {"sigla": "PPRE", "nome": "Progressista Republicano", "eco": 0.5, "soc": 0.4, "peso": 55},
-    {"sigla": "PRDT", "nome": "Renovação Democrática e Técnica", "eco": 0.6, "soc": 0.1, "peso": 28},
-    {"sigla": "PSRV", "nome": "Socialista Revolucionário", "eco": -1.0, "soc": -0.8, "peso": 12},
-    {"sigla": "PAGR", "nome": "Partido do Agro e da Produção", "eco": 0.7, "soc": 0.5, "peso": 18},
+    {"sigla": "PL", "nome": "Partido Liberal", "numero": 22, "fundacao": 2006, "cor": "#1f4fa3", "espectro": "Direita", "eco": 0.6, "soc": 0.85, "peso": 99, "alta": 13},
+    {"sigla": "PT", "nome": "Partido dos Trabalhadores", "numero": 13, "fundacao": 1980, "cor": "#c8102e", "espectro": "Centro-esquerda a esquerda", "eco": -0.6, "soc": -0.4, "peso": 68, "alta": 9},
+    {"sigla": "UNIÃO", "nome": "União Brasil", "numero": 44, "fundacao": 2022, "cor": "#0b5fb4", "espectro": "Centro-direita", "eco": 0.5, "soc": 0.4, "peso": 59, "alta": 9},
+    {"sigla": "PP", "nome": "Progressistas", "numero": 11, "fundacao": 1995, "cor": "#3b82d6", "espectro": "Centro-direita", "eco": 0.5, "soc": 0.5, "peso": 47, "alta": 8},
+    {"sigla": "MDB", "nome": "Movimento Democrático Brasileiro", "numero": 15, "fundacao": 1966, "cor": "#0f9d58", "espectro": "Centro", "eco": 0.2, "soc": 0.2, "peso": 42, "alta": 10},
+    {"sigla": "PSD", "nome": "Partido Social Democrático", "numero": 55, "fundacao": 2011, "cor": "#e8a317", "espectro": "Centro", "eco": 0.3, "soc": 0.2, "peso": 42, "alta": 15},
+    {"sigla": "REPUBLICANOS", "nome": "Republicanos", "numero": 10, "fundacao": 2005, "cor": "#1c8a5a", "espectro": "Centro-direita", "eco": 0.4, "soc": 0.7, "peso": 41, "alta": 4},
+    {"sigla": "PDT", "nome": "Partido Democrático Trabalhista", "numero": 12, "fundacao": 1979, "cor": "#e0453c", "espectro": "Centro-esquerda", "eco": -0.5, "soc": -0.2, "peso": 17, "alta": 3},
+    {"sigla": "PSB", "nome": "Partido Socialista Brasileiro", "numero": 40, "fundacao": 1947, "cor": "#f2b705", "espectro": "Centro-esquerda", "eco": -0.4, "soc": -0.3, "peso": 14, "alta": 2},
+    {"sigla": "PSDB", "nome": "Partido da Social Democracia Brasileira", "numero": 45, "fundacao": 1988, "cor": "#1565c0", "espectro": "Centro a centro-direita", "eco": 0.4, "soc": 0.0, "peso": 13, "alta": 3},
+    {"sigla": "PSOL", "nome": "Partido Socialismo e Liberdade", "numero": 50, "fundacao": 2004, "cor": "#a3238e", "espectro": "Esquerda", "eco": -0.95, "soc": -0.9, "peso": 12, "alta": 0},
+    {"sigla": "PODE", "nome": "Podemos", "numero": 20, "fundacao": 1995, "cor": "#21a366", "espectro": "Centro-direita", "eco": 0.4, "soc": 0.3, "peso": 18, "alta": 4},
+    {"sigla": "AVANTE", "nome": "Avante", "numero": 70, "fundacao": 1989, "cor": "#f47b20", "espectro": "Centro", "eco": 0.1, "soc": 0.2, "peso": 7, "alta": 0},
+    {"sigla": "PCdoB", "nome": "Partido Comunista do Brasil", "numero": 65, "fundacao": 1962, "cor": "#9b111e", "espectro": "Esquerda", "eco": -0.9, "soc": -0.5, "peso": 6, "alta": 0},
+    {"sigla": "PV", "nome": "Partido Verde", "numero": 43, "fundacao": 1986, "cor": "#2e9d4f", "espectro": "Centro-esquerda", "eco": -0.3, "soc": -0.7, "peso": 6, "alta": 0},
+    {"sigla": "SOLIDARIEDADE", "nome": "Solidariedade", "numero": 77, "fundacao": 2013, "cor": "#ef7d1a", "espectro": "Centro", "eco": 0.0, "soc": 0.1, "peso": 8, "alta": 0},
+    {"sigla": "PRD", "nome": "Partido Renovação Democrática", "numero": 25, "fundacao": 2023, "cor": "#24467a", "espectro": "Centro-direita", "eco": 0.5, "soc": 0.7, "peso": 5, "alta": 0},
+    {"sigla": "CIDADANIA", "nome": "Cidadania", "numero": 23, "fundacao": 1992, "cor": "#d81b7a", "espectro": "Centro", "eco": 0.1, "soc": -0.3, "peso": 4, "alta": 0},
+    {"sigla": "NOVO", "nome": "Partido Novo", "numero": 30, "fundacao": 2011, "cor": "#ff6a13", "espectro": "Direita liberal", "eco": 1.0, "soc": 0.2, "peso": 3, "alta": 1},
+    {"sigla": "REDE", "nome": "Rede Sustentabilidade", "numero": 18, "fundacao": 2015, "cor": "#0aa39a", "espectro": "Centro-esquerda", "eco": -0.4, "soc": -0.8, "peso": 2, "alta": 0},
 ]
 
 IDEOLOGIAS = {

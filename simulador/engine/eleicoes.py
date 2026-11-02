@@ -11,8 +11,12 @@ def nova_campanha(estado, rng, inicial=False, sucessor=False):
     proibidos = {jog["partido"]}
     cands = []
     siglas = [s for s in estado["congresso"]["partidos"] if s not in proibidos]
-    rng.shuffle(siglas)
-    for sigla in siglas[:4]:
+    escolhidos = []
+    while siglas and len(escolhidos) < 4:
+        s = rng.choices(siglas, [estado["congresso"]["partidos"][x]["baixa"] + 4 for x in siglas])[0]
+        siglas.remove(s)
+        escolhidos.append(s)
+    for sigla in escolhidos:
         p = estado["congresso"]["partidos"][sigla]
         cands.append({"id": sigla, "nome": f"{rng.choice(NOMES)} {rng.choice(SOBRENOMES)}", "partido": sigla,
                       "eco": p["eco"], "soc": p["soc"], "forca": round(rng.uniform(34, 54), 1)})

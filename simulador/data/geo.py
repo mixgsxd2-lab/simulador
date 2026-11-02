@@ -63,11 +63,18 @@ PAISES = [
     {"cod": "NGA", "nome": "Nigéria", "pos": (5, 4), "pib": 0.4, "militar": 40, "regime": "híbrido", "bloco": "África", "rel": 52},
     {"cod": "ETH", "nome": "Etiópia", "pos": (7, 4), "pib": 0.16, "militar": 40, "regime": "híbrido", "bloco": "África", "rel": 50},
     {"cod": "CHL", "nome": "Chile", "pos": (2, 5), "pib": 0.33, "militar": 40, "regime": "democracia", "bloco": "América Latina", "rel": 65},
-    {"cod": "ARG", "nome": "Argentina", "pos": (3, 5), "pib": 0.6, "militar": 45, "regime": "democracia", "bloco": "América Latina", "rel": 50},
+    {"cod": "ARG", "nome": "Argentina", "pos": (3, 5), "pib": 0.6, "militar": 45, "regime": "democracia", "bloco": "Mercosul", "rel": 50},
     {"cod": "AGO", "nome": "Angola", "pos": (5, 5), "pib": 0.12, "militar": 35, "regime": "híbrido", "bloco": "África", "rel": 60},
     {"cod": "ZAF", "nome": "África do Sul", "pos": (6, 5), "pib": 0.4, "militar": 50, "regime": "democracia", "bloco": "BRICS", "rel": 58},
     {"cod": "AUS", "nome": "Austrália", "pos": (11, 5), "pib": 1.7, "militar": 65, "regime": "democracia", "bloco": "Ocidente", "rel": 58},
+    {"cod": "PRY", "nome": "Paraguai", "pos": None, "pib": 0.04, "militar": 25, "regime": "democracia", "bloco": "Mercosul", "rel": 66},
+    {"cod": "URY", "nome": "Uruguai", "pos": None, "pib": 0.08, "militar": 25, "regime": "democracia", "bloco": "Mercosul", "rel": 70},
+    {"cod": "BOL", "nome": "Bolívia", "pos": None, "pib": 0.05, "militar": 30, "regime": "democracia", "bloco": "América Latina", "rel": 58},
+    {"cod": "ECU", "nome": "Equador", "pos": None, "pib": 0.12, "militar": 30, "regime": "democracia", "bloco": "América Latina", "rel": 58},
+    {"cod": "PRT", "nome": "Portugal", "pos": None, "pib": 0.29, "militar": 45, "regime": "democracia", "bloco": "União Europeia / CPLP", "rel": 72},
 ]
+# Mapa: os países acima são parceiros diplomáticos da simulação (códigos ISO 3166 alfa-3, iguais aos do mapa).
+# PIB e poder militar são estimativas arredondadas usadas pelo jogo.
 
 ESTADOS_POR_UF = {e["uf"]: e for e in ESTADOS}
 PAISES_POR_COD = {p["cod"]: p for p in PAISES}
