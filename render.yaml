@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: simulador-presidente
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    # 1 worker + threads: o SQLite fica seguro e o estado do jogo é serializado por transação
+    startCommand: gunicorn app:app --workers 1 --threads 4 --timeout 60 --bind 0.0.0.0:$PORT
+    healthCheckPath: /saude
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: PYTHON_VERSION
+        value: 3.12.8
+      # No plano free o disco é efêmero: o banco é recriado a cada deploy/reinício.
+      # Para persistir, use um plano pago, descomente o bloco "disk" abaixo e a variável DATABASE_PATH.
+      # - key: DATABASE_PATH
+      #   value: /var/data/simulador.db
+    # disk:
+    #   name: dados
+    #   mountPath: /var/data
+    #   sizeGB: 1

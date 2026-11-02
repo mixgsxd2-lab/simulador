@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block titulo %}Partida {{ codigo }} · Simulador de Presidente{% endblock %}
+{% block body_attrs %}data-codigo="{{ codigo }}"{% endblock %}
+{% block corpo %}
+<div id="jogo"><div class="glass">Carregando partida…</div></div>
+<div id="modal-raiz"></div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/views.js') }}"></script>
+<script src="{{ url_for('static', filename='js/game.js') }}"></script>
+{% endblock %}

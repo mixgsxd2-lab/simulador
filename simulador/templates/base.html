@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block titulo %}Simulador de Presidente do Brasil{% endblock %}</title>
+  <link rel="icon" type="image/jpeg" href="{{ url_for('static', filename='img/logo.jpg') }}">
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('sim_tema') || 'auto';
+        var d = t === 'auto' ? matchMedia('(prefers-color-scheme: dark)').matches : t === 'dark';
+        document.documentElement.dataset.theme = d ? 'dark' : 'light';
+      } catch (e) {}
+    })();
+  </script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body {% block body_attrs %}{% endblock %}>
+  <div class="wrap">
+    {% block corpo %}{% endblock %}
+  </div>
+  <div id="toasts"></div>
+  <script src="{{ url_for('static', filename='js/common.js') }}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

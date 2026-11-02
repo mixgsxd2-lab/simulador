@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block corpo %}
+<header class="topo">
+  <a class="marca" href="/"><img src="{{ url_for('static', filename='img/logo.jpg') }}" alt="Logo"><div><b>Simulador de Presidente</b><span>do Brasil</span></div></a>
+  <div class="espaco"></div>
+  <button class="btn" onclick="Tema.alternar()">◐ Tema</button>
+</header>
+
+<section class="glass hero">
+  <img src="{{ url_for('static', filename='img/logo.jpg') }}" alt="Logo do simulador">
+  <div style="flex:1;min-width:240px">
+    <h1 style="font-size:1.8rem">Governe o Brasil. Ou um estado.</h1>
+    <p class="suave mb0">Campanha, debates, Congresso, STF, economia, diplomacia e eleições — em partidas (RUNS) independentes, com eventos e cenários variáveis. Você começa aos 35 anos.</p>
+  </div>
+</section>
+
+<div id="app" class="grid g-main mt">
+  <form id="form" class="col" autocomplete="off"></form>
+  <aside class="col">
+    <div class="glass">
+      <h2>Entrar em partida multiplayer</h2>
+      <p class="suave peq">Peça o código ao anfitrião. Você pode ser governador, ministro, parlamentar ou líder de outro país.</p>
+      <div class="col">
+        <label class="campo">Código da partida<input type="text" id="j-codigo" maxlength="5" placeholder="ABC12" style="text-transform:uppercase"></label>
+        <label class="campo">Seu nome<input type="text" id="j-nome" maxlength="30"></label>
+        <label class="campo">Papel<select id="j-papel"></select></label>
+        <label class="campo" id="j-pais-box" hidden>Posição<select id="j-pais"></select></label>
+        <button type="button" class="btn prim" id="j-entrar">Entrar</button>
+      </div>
+    </div>
+    <div class="glass">
+      <h2>Melhores RUNS</h2>
+      <div id="ranking" class="suave peq">Carregando…</div>
+    </div>
+  </aside>
+</div>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/setup.js') }}"></script>{% endblock %}
