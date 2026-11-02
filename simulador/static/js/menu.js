@@ -298,6 +298,9 @@ RENDER.continuar = async () => {
 RENDER.multi = () => {
   const papeis = [['governador', 'mapa', 'Pede repasses ao governo federal.'], ['ministro', 'pasta', 'Pede mais orçamento para sua área.'], ['parlamentar', 'congresso', 'Troca apoio por emendas.'], ['lider', 'globo', 'Propõe acordos, alianças ou sanções.']];
   $('#tela-multi').innerHTML = `<div class="conteudo">${topoTela('Multiplayer', 'Entre na partida de um amigo pelo código')}
+    <section class="vidro painel" style="margin-bottom:16px"><div class="linha entre"><div class="linha nw"><span class="ico-caixa" style="width:42px;height:42px;border-radius:13px;display:grid;place-items:center;background:var(--vidro-3);color:var(--ouro)">${icone('mais')}</span>
+      <div><h2 class="mb0">Criar partida multiplayer</h2><div class="fraco peq">Crie sua campanha; o código da sala aparece no topo do jogo para os amigos entrarem.</div></div></div>
+      <button type="button" class="btn btn-ouro btn-grande" data-ir="novo">${icone('play', 'p')} Criar sala</button></div></section>
     <div class="grade g2"><section class="vidro painel"><div class="painel-cab"><span class="ico-caixa">${icone('link')}</span><h2>Entrar na partida</h2></div>
       <div class="coluna" style="gap:12px"><label class="campo">Código da partida<input type="text" id="j-codigo" maxlength="5" placeholder="ABC12" style="text-transform:uppercase;font-size:1.3rem;letter-spacing:.3em;font-weight:700"></label>
       <label class="campo">Seu nome<input type="text" id="j-nome" maxlength="30"></label>

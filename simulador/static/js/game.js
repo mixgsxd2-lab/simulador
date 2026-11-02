@@ -54,7 +54,7 @@ function render(animar) {
     <div class="principal">
       <header class="vidro barra-topo"><div class="governante">${avJogador()}<div class="flex1" style="min-width:0"><b>${esc(s.jogador.nome)}</b>
         <div class="sub">${selo(s.jogador.partido)}<span>${m.modo === 'presidente' ? (m.fase === 'governo' ? 'Presidente da República' : 'Candidato(a) à Presidência') : (m.fase === 'governo' ? 'Governador(a) — ' : 'Candidato(a) — ') + esc(m.rotulo)}</span></div></div></div>
-        <div class="topo-info"><span class="chip">${icone('calendario', 'p')}${m.ano} · ${m.trimestre}º tri</span><span class="chip">${esc(fase)}</span>
+        <div class="topo-info"><button type="button" class="chip" style="cursor:pointer" data-fn="copiarLink" data-link="${esc(location.origin + '/jogo/' + G.codigo)}" title="Copiar convite multiplayer">${icone('link', 'p')}Sala <b style="letter-spacing:.15em;color:var(--ouro)">${G.codigo}</b> · ${G.jogadores.length} jogador${G.jogadores.length > 1 ? 'es' : ''}</button><span class="chip">${icone('calendario', 'p')}${m.ano} · ${m.trimestre}º tri</span><span class="chip">${esc(fase)}</span>
           <span class="capital" title="Capital político: gasto em leis, nomeações, negociações e diplomacia">${icone('raio', 'p')}Capital <span class="pips">${Array.from({ length: 8 }, (_, i) => `<i class="pip ${i < s.capital ? 'on' : ''}"></i>`).join('')}</span></span>
           ${m.fase !== 'campanha' ? `<div class="mini-anel" title="Popularidade">${UIc.anel(s.popularidade, 100, '', corEstado(s.popularidade, 55, 35), 46, pct(s.popularidade))}</div>` : ''}
           ${eu.anfitriao && !m.encerrado ? `<button type="button" class="btn btn-ouro btn-turno" data-fn="avancar" ${s.evento ? 'disabled title="Responda ao evento primeiro"' : ''}>${prox}${icone('dir', 'p')}</button>` : ''}
@@ -151,7 +151,7 @@ const FN = {
   fecharEleicao() { marcar('eleicoes', G.estado.eleicoes.length); modais(); },
   fecharRelatorio() { marcar('rel', 'oculto'); modais(); },
   verRelatorio() { marcar('rel', ''); modais(); },
-  copiarLink(el) { navigator.clipboard?.writeText(el.dataset.link).then(() => toast('Link copiado!'), () => toast(el.dataset.link)); },
+  copiarLink(el) { const t = `Entre na minha partida do Simulador Presidencial: ${el.dataset.link} (código ${G.codigo})`; navigator.clipboard?.writeText(t).then(() => toast('Convite copiado! Envie aos amigos.'), () => toast(el.dataset.link)); },
   async enviarMsg() {
     const i = $('#msg'); if (!i || !i.value.trim()) return;
     const r = await api(`/api/jogos/${CODIGO}/mensagem`, { texto: i.value }, CODIGO);
