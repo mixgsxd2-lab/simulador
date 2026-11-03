@@ -58,45 +58,6 @@ def pressionar_bc(estado, p, rng):
     return True, "O Banco Central cedeu e reduziu os juros. O mercado desconfia."
 
 
-# ---------- economia simplificada (um clique) ----------
-NIVEIS_GASTO = {"austeridade": 22.0, "equilibrio": 27.0, "investimento": 32.0}
-
-
-def politica_fiscal(estado, p, rng):
-    """Baixa ou aumenta todos os impostos de uma vez."""
-    d = {"baixar": -1, "aumentar": 1}.get(p.get("direcao"))
-    if not d:
-        return False, "Escolha baixar ou aumentar."
-    erro = _cap(estado, 1)
-    if erro:
-        return False, erro
-    for k in estado["impostos"]:
-        passo = 1.0 if k == "importacao" else 2.0
-        estado["impostos"][k] = round(clamp(estado["impostos"][k] + d * passo, 0, 45), 1)
-    if d < 0:
-        return True, "Impostos reduzidos: a economia e a popularidade sobem, mas entra menos dinheiro no caixa."
-    return True, "Impostos aumentados: entra mais dinheiro no caixa, mas a economia e a popularidade sofrem."
-
-
-def plano_orcamento(estado, p, rng):
-    """Define o nível de gasto e uma área prioritária (recebe uma fatia maior do orçamento)."""
-    o = estado["orcamento"]
-    nivel = p.get("nivel") if p.get("nivel") in NIVEIS_GASTO else o.get("nivel", "equilibrio")
-    prioridade = p.get("prioridade") if p.get("prioridade") in SETORES else o.get("prioridade")
-    if p.get("prioridade") == "nenhuma":
-        prioridade = None
-    escopo = estado["meta"]["escopo"]
-    aloc = dict(economia.alocacao_inicial(escopo))
-    if prioridade:
-        aloc[prioridade] = aloc[prioridade] + 12
-    o["aloc"] = economia.normalizar_aloc(aloc)
-    o["gasto_pct"] = NIVEIS_GASTO[nivel]
-    o["nivel"], o["prioridade"] = nivel, prioridade
-    nomes = {"austeridade": "austeridade (gasta menos, sobra caixa)", "equilibrio": "equilíbrio", "investimento": "investimento (serviços melhoram, caixa cai)"}
-    from ..data.politica import ROTULO_SETOR
-    return True, f"Orçamento: {nomes[nivel]}" + (f", prioridade em {ROTULO_SETOR[prioridade].lower()}." if prioridade else ".")
-
-
 # ---------- gabinete ----------
 def nomear_ministro(estado, p, rng):
     pasta, i = p.get("pasta"), p.get("indice")
@@ -383,7 +344,7 @@ def encerrar_run(estado, p, rng):
 
 
 HANDLERS = {f.__name__: f for f in (
-    ajustar_impostos, ajustar_orcamento, politica_fiscal, plano_orcamento, negociar_base, pressionar_bc, nomear_ministro, demitir_ministro, propor_lei, negociar,
+    ajustar_impostos, ajustar_orcamento, negociar_base, pressionar_bc, nomear_ministro, demitir_ministro, propor_lei, negociar,
     responder_investigacao, pressionar_stf, indicar_stf, publicidade, negociar_impeachment, acao_diplomatica,
     responder_proposta, denunciar_acordo,
     pedir_repasse, alinhar_federal, campanha, responder_evento, avancar_turno, encerrar_run)}

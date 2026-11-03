@@ -82,7 +82,7 @@ python tools/gerar_mapas.py world50.json br.json
 - **Rodadas**: cada rodada é um trimestre. Você faz algumas ações, que gastam **pontos de ação** (⚡) e voltam a cada rodada, e toca em **Encerrar trimestre**.
 - **O que fazer agora**: na aba Início, um painel mostra o objetivo e as 3 ações mais importantes do momento, com atalho para o lugar certo.
 - **Abas (5)**: Início (objetivo, dicas, ministérios, comunicação, manchetes), Economia, Leis, Mundo e Mais (povo, Justiça, gráficos, sala multiplayer e ajustes).
-- **Economia em botões**: baixar ou aumentar impostos; orçamento em austeridade, equilíbrio ou investimento, mais uma área prioritária. Os controles deslizantes continuam em "Ajuste fino (avançado)".
+- **Economia**: controles de impostos e do orçamento (nível de gasto e divisão entre as áreas), com indicadores e o resultado fiscal do trimestre.
 - **Leis**: 44 projetos agrupados por tema. Cada um mostra a **chance de aprovar** (Congresso e STF já incluídos) e se agrada ou não o eleitor. "Negociar apoio" libera emendas para os partidos indecisos; a negociação partido a partido fica em "avançado".
 - **Mundo**: missões, acordos comerciais, alianças, sanções, guerras e ONU. **Cúpulas obrigatórias** (presidente): Mercosul (2º e 4º trimestres), BRICS e Assembleia Geral da ONU (3º trimestre) e COP30 em Belém (2025); em cada uma você escolhe a posição do Brasil (catálogo em `data/cupulas.py`).
 - **Criação da partida**: 5 etapas (cargo, partido, ideologia, personagem e revisão). Promessas, duração e cenário são opcionais, em "Opções avançadas".

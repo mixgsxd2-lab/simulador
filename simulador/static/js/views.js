@@ -74,9 +74,9 @@ function dicas() {
   if (vagos && s.meta.fase !== 'campanha') add(8, 'pasta', `${vagos} ministério(s) sem titular: toque no cartão vazio e nomeie alguém.`, 'governo');
   if (j.investigacoes.some((i) => i.status === 'aberta' && !i.resposta)) add(7, 'justica', 'Há uma investigação sem resposta. Cooperar costuma ser o mais seguro.', 'mais', 'data-sub="justica"');
   if (D().apoio_baixa < 50) add(7, 'congresso', 'Você não tem maioria: use "Negociar apoio" na aba Leis.', 'congresso');
-  if (e.inflacao > 6.5) add(6, 'grafico', 'Inflação alta: aumente impostos ou escolha "Austeridade" no orçamento.', 'economia');
-  if (e.caixa <= 0 || e.resultado < -60) add(6, 'moedas', 'O caixa está no vermelho: escolha "Austeridade" ou aumente impostos.', 'economia');
-  if (e.crescimento < 1) add(5, 'economia', 'Economia fraca: baixar impostos ou escolher "Investimento" ajuda a crescer.', 'economia');
+  if (e.inflacao > 6.5) add(6, 'grafico', 'Inflação alta: na Economia, aumente impostos ou reduza o nível de gasto.', 'economia');
+  if (e.caixa <= 0 || e.resultado < -60) add(6, 'moedas', 'O caixa está no vermelho: na Economia, reduza o nível de gasto ou aumente impostos.', 'economia');
+  if (e.crescimento < 1) add(5, 'economia', 'Economia fraca: na Economia, reduza impostos ou invista mais em infraestrutura.', 'economia');
   if (j.vaga_stf) add(5, 'justica', 'Abriu uma vaga no STF: indique um ministro.', 'mais', 'data-sub="justica"');
   if ((s.diplomacia.propostas || []).length) add(4, 'globo', 'Um país enviou uma proposta: responda na aba Mundo.', 'diplomacia');
   const promessa = s.jogador.propostas.map((pid) => CAT.propostas[pid]).find((p) => p.lei && !s.congresso.leis_aprovadas.some((l) => l.id === p.lei));
@@ -184,29 +184,7 @@ function rosca(aloc) {
 }
 const controle = (grp, id, rot, val, min, max, step, txt) => `<div class="controle"><span class="suave">${rot}</span><input type="range" data-sl="${grp}:${id}" min="${min}" max="${max}" step="${step}" value="${val}" style="--p:${((val - min) / (max - min)) * 100}%" ${PODE() ? '' : 'disabled'}><span class="v" data-out="${grp}:${id}">${txt}</span></div>`;
 const aberto = (id) => (UI.abertos.has(id) ? 'open' : '');
-const NIVEIS = { austeridade: ['Austeridade', 'Gasta menos: sobra caixa e a inflação cai, mas os serviços pioram.'],
-  equilibrio: ['Equilíbrio', 'Gasto normal.'], investimento: ['Investimento', 'Gasta mais: serviços e economia melhoram, mas o caixa cai.'] };
 function vEconomia() {
-  const s = S(), e = s.economia, o = s.orcamento, nivel = o.nivel || 'equilibrio', prio = o.prioridade || '';
-  const ind = (rot, v, cor, dica) => `<div class="ind" title="${esc(dica)}"><span class="rotulo">${rot}</span><b style="color:${cor}">${v}</b><span class="mini" style="color:${cor}">${NIVEL_COR[cor] || ''}</span></div>`;
-  const indicadores = UIc.painel('Como está a economia', 'economia', `<div class="inds">
-    ${ind('Desemprego', pct(e.desemprego, 1), corEstado(e.desemprego, 8, 11, true), '')}${ind('Dívida', pct(e.divida_pib) + ' do PIB', corEstado(e.divida_pib, 70, 95, true), '')}
-    ${ind('Saldo', bi(e.resultado), e.resultado >= 0 ? 'var(--verde)' : e.resultado > -40 ? 'var(--ambar)' : 'var(--vermelho)', '')}</div>
-    ${NAC() ? '' : `<p class="mini fraco mt mb0">A economia do estado acompanha a do país: crescimento ${pct(s.federal.crescimento, 1)}, inflação ${pct(s.federal.inflacao, 1)}.</p>`}`);
-  const impostos = UIc.painel('Impostos', 'justica', `<p class="peq suave">Carga atual: <b>${pct(D().carga, 1)} do PIB</b>.</p>
-    <div class="grade g2">${bA(`${icone('menos', 'p')} Baixar impostos`, 'politica_fiscal', { direcao: 'baixar' }, 'btn-grande escolha-acao', '')}${bA(`${icone('mais', 'p')} Aumentar impostos`, 'politica_fiscal', { direcao: 'aumentar' }, 'btn-grande escolha-acao', '')}</div>
-    <p class="mini fraco mt mb0">Baixar: mais crescimento e popularidade. Aumentar: mais dinheiro. 1 ação.</p>`);
-  const niveis = Object.entries(NIVEIS).map(([k, [t, d]]) => `<button type="button" class="opcao-simples ${nivel === k ? 'sel' : ''}" data-a="plano_orcamento" data-p='${JSON.stringify({ nivel: k })}' ${PODE() ? '' : 'disabled'}><b>${t}</b><small>${d}</small></button>`).join('');
-  const setores = ['', ...CAT.setores].map((k) => `<button type="button" class="opcao-simples mini-op ${prio === k ? 'sel' : ''}" data-a="plano_orcamento" data-p='${JSON.stringify({ prioridade: k || 'nenhuma' })}' ${PODE() ? '' : 'disabled'}>${k ? icone(ICO_SETOR[k], 'p') : ''}<b>${k ? CAT.rotulo_setor[k] : 'Nenhuma'}</b></button>`).join('');
-  const orcamento = UIc.painel('Orçamento', 'grafico', `<div class="rotulo">Quanto gastar</div><div class="opcoes-simples">${niveis}</div>
-    <div class="rotulo mt-g">Área prioritária</div><div class="opcoes-simples setores">${setores}</div>
-`);
-  const bc = NAC() ? UIc.painel('Juros (Banco Central)', 'moedas', `<p class="peq suave">Selic: <b>${pct(e.selic, 1)}</b>. Juros altos seguram a inflação, mas freiam a economia.</p>${bA('Pressionar por juros menores (2)', 'pressionar_bc', {}, 'btn-mini btn-perigo', '', 'alerta')}
-    `) : '';
-  return `<div class="grade g2"><div class="coluna">${indicadores}${impostos}${bc}</div><div class="coluna">${orcamento}</div></div>
-    <details class="avancado mt" data-det="eco-av" ${aberto('eco-av')}><summary>${icone('ajustes', 'p')} Ajuste fino (avançado)</summary>${vEconomiaAvancada()}</details>`;
-}
-function vEconomiaAvancada() {
   const s = S(), e = s.economia;
   if (!UI.draft) resetDraft();
   const dr = UI.draft;

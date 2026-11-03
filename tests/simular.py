@@ -22,11 +22,12 @@ def bot(estado, rng):
     leis = [k for k, v in LEIS.items() if escopo in v["escopos"]]
     ex(estado, "propor_lei", {"lei": rng.choice(leis)}, rng)
     ex(estado, "negociar", {"tipo": "emendas", "partido": rng.choice(list(estado["congresso"]["partidos"])), "valor": 10}, rng)
-    # controles simplificados (um clique)
-    if rng.random() < 0.3:
-        ex(estado, "plano_orcamento", {"nivel": rng.choice(["austeridade", "equilibrio", "investimento"]), "prioridade": rng.choice(["saude", "educacao", "nenhuma"])}, rng)
-    if rng.random() < 0.15:
-        ex(estado, "politica_fiscal", {"direcao": rng.choice(["baixar", "aumentar"])}, rng)
+    # economia: ajuste fino de impostos e orçamento
+    if rng.random() < 0.2:
+        imp = {k: v + rng.choice([-2, 2]) for k, v in estado["impostos"].items()}
+        ex(estado, "ajustar_impostos", imp, rng)
+    if rng.random() < 0.2:
+        ex(estado, "ajustar_orcamento", {"gasto_pct": rng.uniform(22, 32), "aloc": estado["orcamento"]["aloc"]}, rng)
     if rng.random() < 0.2:
         ex(estado, "negociar_base", {}, rng)
     if estado["campanha"].get("ativa"):
