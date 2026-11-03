@@ -73,7 +73,7 @@
 .ficha dt { color: var(--texto-3); } .ficha dd { margin: 0; font-weight: 600; text-align: right; }
 
 /* cartões de cargo */
-.cargos { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.cargos { display: grid; grid-template-columns: minmax(0, 1fr) 1fr; gap: 18px; }
 .cargo { padding: 0; overflow: hidden; min-height: 300px; }
 .cargo .arte { height: 170px; position: relative; overflow: hidden; background: radial-gradient(circle at 50% 40%, color-mix(in srgb, var(--ouro) 18%, transparent), transparent 70%); border-bottom: 1px solid var(--borda); }
 .cargo .arte svg { position: absolute; inset: 10px; width: calc(100% - 20px); height: calc(100% - 20px); }
@@ -144,7 +144,7 @@
 .linha-tempo-era::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, var(--borda-2), transparent); }
 
 /* ranking */
-.podio { display: grid; grid-template-columns: 1fr 1.15fr 1fr; gap: 14px; align-items: end; margin-bottom: 20px; }
+.podio { display: grid; grid-template-columns: minmax(0, 1fr) 1.15fr 1fr; gap: 14px; align-items: end; margin-bottom: 20px; }
 .podio .vidro { padding: 18px; text-align: center; }
 .podio .p1 { min-height: 220px; border-color: color-mix(in srgb, var(--ouro) 50%, transparent); }
 .podio .lugar { font: 700 2rem var(--fonte-titulo); color: var(--ouro); }
@@ -163,20 +163,22 @@
   .ficha { display: none; }
 }
 @media (max-width: 900px) {
-  .titulo-grade { grid-template-columns: 1fr; gap: 24px; padding-top: 28px; }
+  .titulo-grade { grid-template-columns: minmax(0, 1fr); gap: 24px; padding-top: 28px; }
   .vitrine { display: none; }
-  .assistente { grid-template-columns: 1fr; }
+  .assistente { grid-template-columns: minmax(0, 1fr); }
   .passos { position: static; flex-direction: row; overflow-x: auto; padding: 8px; }
   .passos .progresso-passos, .passos .rotulo { display: none; }
   .passo-item { flex: none; } .passo-item .t { display: none; } .passo-item.atual .t { display: inline; }
-  .criador, .territorio, .ideologia-grade, .revisao { grid-template-columns: 1fr; }
+  .criador, .territorio, .ideologia-grade, .revisao { grid-template-columns: minmax(0, 1fr); }
   .vitrine-av { position: static; max-width: 340px; margin: 0 auto; width: 100%; }
 }
 @media (max-width: 620px) {
   .conteudo { padding: 14px 14px 80px; } .palco { padding: 18px; }
-  .cargos { grid-template-columns: 1fr; } .podio { grid-template-columns: 1fr; }
+  .cargos { grid-template-columns: minmax(0, 1fr); } .podio { grid-template-columns: minmax(0, 1fr); }
   .rodape-menu { position: static; padding: 18px; }
   .titulo-grade { padding-bottom: 20px; }
   .selo-logo { width: 84px; height: 84px; } .selo-logo img { inset: 10px; width: 64px; height: 64px; }
+  .abas-criador { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); overflow: visible; }
+  .aba-c { padding: 8px 6px; font-size: .78rem; }
   .navegacao { position: sticky; bottom: 0; margin: 20px -18px -18px; padding: 12px 18px; background: var(--vidro-3); backdrop-filter: blur(16px); border-radius: 0 0 var(--r-l) var(--r-l); }
 }

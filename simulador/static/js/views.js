@@ -162,7 +162,7 @@ function rosca(aloc) {
   const tot = ent.reduce((a, [, v]) => a + v, 0) || 1, r = 52, c = 2 * Math.PI * r;
   let off = 0;
   const seg = ent.map(([k, v]) => { const l = (v / tot) * c; const s = `<circle cx="70" cy="70" r="${r}" stroke="${CORES_SETOR[k]}" stroke-dasharray="${l - 2} ${c - l + 2}" stroke-dashoffset="${-off}"/>`; off += l; return s; }).join('');
-  return `<div class="linha nw" style="gap:20px"><svg class="rosca" viewBox="0 0 140 140" style="transform:rotate(-90deg)"><circle cx="70" cy="70" r="${r}" stroke="var(--vidro-3)"/>${seg}</svg>
+  return `<div class="linha rosca-caixa" style="gap:20px"><svg class="rosca" viewBox="0 0 140 140" style="transform:rotate(-90deg)"><circle cx="70" cy="70" r="${r}" stroke="var(--vidro-3)"/>${seg}</svg>
     <div class="legenda-rosca flex1">${ent.map(([k, v]) => `<span><i style="background:${CORES_SETOR[k]}"></i>${CAT.rotulo_setor[k]} <b>${nf((v / tot) * 100, 0)}%</b></span>`).join('')}</div></div>`;
 }
 const controle = (grp, id, rot, val, min, max, step, txt) => `<div class="controle"><span class="suave">${rot}</span><input type="range" data-sl="${grp}:${id}" min="${min}" max="${max}" step="${step}" value="${val}" style="--p:${((val - min) / (max - min)) * 100}%" ${PODE() ? '' : 'disabled'}><span class="v" data-out="${grp}:${id}">${txt}</span></div>`;
@@ -236,7 +236,7 @@ function vCongresso() {
   const votacao = uv ? `<div class="vidro forte painel mb0" style="margin-bottom:14px"><div class="rotulo">Última votação · ${esc(CAT.leis[uv.lei].nome)}</div><div class="votacao mt">${Object.entries(uv.resultado).map(([k, r]) => `<b>${k === 'baixa' ? (NAC() ? 'Câmara' : 'Assembleia') : 'Senado'}</b>${UIc.medidor(r.sim, r.total, r.aprovou ? 'var(--verde)' : 'var(--vermelho)')}<span class="num">${r.sim}/${r.total} ${r.aprovou ? '✔' : '✖'}</span>`).join('')}</div></div>` : '';
   return `${UIc.painel(NAC() ? 'Congresso Nacional' : 'Assembleia Legislativa', 'congresso', `<div class="filtros">${filtro}</div><div class="casas">${casa(NAC() ? 'Câmara dos Deputados' : 'Deputados estaduais', 'baixa', c.total_baixa, d.apoio_baixa)}${alta ? casa('Senado Federal', 'alta', c.total_alta, d.apoio_alta) : ''}</div>
     <div class="legenda-partidos">${legenda}</div>`, { sub: NAC() ? 'Bancadas iniciais: eleição de 2022 (TSE), com fusões' : 'Cadeiras distribuídas pela simulação', acoes: '<span class="selo fato">Composição real</span>' })}
-    <div class="grade mt" style="grid-template-columns:minmax(0,1.3fr) minmax(0,1fr)"><div>${UIc.painel('Projetos de lei', 'livro', `${votacao}<div class="filtros">${catBtns}</div><div class="grade gauto">${leis}</div>`, { sub: `Capital político disponível: ${s.capital}` })}</div>
+    <div class="grade mt layout-cong"><div>${UIc.painel('Projetos de lei', 'livro', `${votacao}<div class="filtros">${catBtns}</div><div class="grade gauto">${leis}</div>`, { sub: `Capital político disponível: ${s.capital}` })}</div>
     <div>${UIc.painel('Partidos e negociação', 'aperto', `<div class="rolagem" style="max-height:640px;overflow-x:auto"><table class="tabela"><thead><tr><th>Partido</th><th>${alta ? 'Dep./Sen.' : 'Cadeiras'}</th><th>Afinidade</th><th></th></tr></thead><tbody>${tabela}</tbody></table></div>`)}</div></div>`;
 }
 
@@ -436,7 +436,7 @@ function vConfig() {
   return `<div class="grade g2"><div class="coluna">
     ${UIc.painel('Aparência', 'sol', `<div class="grupo-btn">${[['light', 'sol', 'Claro'], ['dark', 'lua', 'Escuro'], ['auto', 'ajustes', 'Automático']].map(([k, ic, n]) => `<button type="button" class="btn ${t === k ? 'btn-ouro' : ''}" data-fn="mudarTema" data-tema="${k}">${icone(ic, 'p')}${n}</button>`).join('')}</div>`)}
     ${UIc.painel('Tutorial', 'info', `<p class="peq suave">Um passeio guiado pelas abas: governar, criar leis, administrar o país, diplomacia e eleições.</p>${bF('Iniciar tutorial', 'abrirTutorial', 'btn-ouro', '', 'play')}`)}</div>
-    <div class="coluna">${UIc.painel('Sua partida', 'bandeira', `<div class="linha nw">${avJogador()}<div><b class="titulo-display" style="font-size:1.2rem">${esc(s.jogador.nome)}</b><div class="peq suave">${s.jogador.idade + Math.floor(m.turno / 4)} anos · ${esc(s.jogador.partido_nome)} · ${esc(CAT.ideologias[s.jogador.ideologia].nome)}</div>
+    <div class="coluna">${UIc.painel('Sua partida', 'bandeira', `<div class="linha nw">${avJogador('av-ficha')}<div class="flex1" style="min-width:0"><b class="titulo-display" style="font-size:1.2rem">${esc(s.jogador.nome)}</b><div class="peq suave">${s.jogador.idade + Math.floor(m.turno / 4)} anos · ${esc(s.jogador.partido_nome)} · ${esc(CAT.ideologias[s.jogador.ideologia].nome)}</div>
       <div class="mini fraco">${m.modo === 'presidente' ? 'Presidência da República' : 'Governo de ' + esc(m.rotulo)} · RUN ${esc(m.duracao)} · mandato ${m.mandato}/${m.max_mandatos}${origem ? ' · ' + origem : ''}</div>
       ${m.substitui ? `<div class="mini fraco">Cenário alternativo: você venceu a eleição de 2022 no lugar de ${esc(m.substitui)}.</div>` : ''}</div></div>
       <div class="grupo-btn mt">${m.encerrado ? bF('Ver relatório final', 'verRelatorio', 'btn-ouro', '', 'trofeu') : bA('Encerrar partida', 'encerrar_run', {}, 'btn-perigo', 'data-confirmar="Encerrar esta partida agora e ver o relatório?"', 'sair')}<a class="btn" href="/">${icone('palacio', 'p')}Menu inicial</a></div>`)}</div></div>`;

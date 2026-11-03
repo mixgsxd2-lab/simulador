@@ -91,6 +91,9 @@ function renderNovo() {
           ${p.id === 'revisao' ? `<button type="button" class="btn btn-ouro btn-grande" data-nav="iniciar">${icone('palacio')} Tomar posse</button>`
           : `<button type="button" class="btn btn-ouro" data-nav="proximo">Continuar ${icone('dir', 'p')}</button>`}</div></section>
       <aside class="vidro ficha" id="ficha">${ficha()}</aside></div></div>`;
+  // celular: a barra de etapas rola até a etapa atual
+  const barra = $('.passos'), atual = $('.passo-item.atual');
+  if (barra && atual) barra.scrollLeft = atual.offsetLeft - barra.clientWidth / 2 + atual.offsetWidth / 2;
   posPasso(p.id);
 }
 const tituloPasso = (id) => ({ cargo: 'Qual cargo você vai disputar?', territorio: 'Escolha seu estado', partido: 'Filie-se a um partido', ideologia: 'Defina sua ideologia',

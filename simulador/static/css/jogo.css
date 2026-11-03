@@ -5,7 +5,7 @@
 .lateral .logo:hover { transform: rotate(-12deg) scale(1.05); }
 .nav-item { position: relative; width: 72px; padding: 10px 4px 8px; border: 0; border-radius: 16px; background: transparent; color: var(--texto-3); cursor: pointer;
   display: flex; flex-direction: column; align-items: center; gap: 5px; font-size: .64rem; font-weight: 600; letter-spacing: .02em; transition: color .25s, background .25s; }
-.nav-item:hover { color: var(--texto); background: var(--vidro-2); }
+@media (hover: hover) { .nav-item:hover { color: var(--texto); background: var(--vidro-2); } }  /* no toque o hover fica preso */
 .nav-item.ativa { color: var(--texto); background: var(--vidro-3); box-shadow: var(--sombra); }
 .nav-item.ativa::before { content: ""; position: absolute; left: -10px; top: 22%; bottom: 22%; width: 3px; border-radius: 0 3px 3px 0; background: var(--ouro); box-shadow: 0 0 10px var(--ouro); }
 .nav-item.ativa .ico { color: var(--ouro); }
@@ -58,6 +58,7 @@
 .ministro:hover { transform: translateY(-2px); border-color: var(--borda-2); }
 .ministro .topo-m { display: flex; gap: 8px; align-items: center; }
 .ministro .avatar-moldura { width: 40px; height: 40px; border-radius: 12px; }
+.ministro .medidor { flex: 1 1 24px; min-width: 24px; }
 .ministro .pasta { font-size: .64rem; text-transform: uppercase; letter-spacing: .08em; color: var(--texto-3); font-weight: 700; line-height: 1.2; }
 .ministro b { font-size: .82rem; line-height: 1.2; }
 .ministro.vago { border-style: dashed; }
@@ -80,7 +81,7 @@
 .fluxo-linha .v { text-align: right; font-weight: 650; font-variant-numeric: tabular-nums; }
 .rosca { width: 150px; height: 150px; flex: none; }
 .rosca circle { fill: none; stroke-width: 18; transition: stroke-dasharray .6s var(--ease); }
-.legenda-rosca { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 14px; font-size: .78rem; }
+.legenda-rosca { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); min-width: 190px; gap: 6px 14px; font-size: .78rem; }
 .legenda-rosca i { display: inline-block; width: 9px; height: 9px; border-radius: 3px; margin-right: 6px; }
 .controle { display: grid; grid-template-columns: minmax(120px, 170px) 1fr 70px; gap: 12px; align-items: center; margin: 8px 0; font-size: .86rem; }
 .controle .v { text-align: right; font-weight: 650; font-variant-numeric: tabular-nums; }
@@ -135,15 +136,23 @@
 
 /* navegação inferior (celular) */
 .nav-inferior { display: none; }
-@media (max-width: 1100px) { .layout-gov, .layout-diplo, .casas { grid-template-columns: 1fr; } }
+.layout-cong { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); }
+@media (max-width: 1100px) { .layout-gov, .layout-diplo, .casas, .layout-cong { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 760px) {
-  .app { grid-template-columns: 1fr; }
+  .app { grid-template-columns: minmax(0, 1fr); }
   .lateral { display: none; }
   .principal { padding: 10px 12px 96px; }
   .barra-topo { position: static; gap: 10px; }
-  .topo-info { margin-left: 0; width: 100%; justify-content: space-between; }
+  .topo-info { margin-left: 0; width: 100%; gap: 6px; justify-content: flex-start; }
+  .topo-info .chip, .topo-info .capital { padding: 4px 9px; font-size: .7rem; gap: 5px; }
+  .topo-info .mini-anel { margin-left: auto; }
+  .barra-topo { padding: 10px 12px; }
+  .faixa-kpi { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .kpi { padding: 9px 10px; } .kpi .valor { font-size: 1.12rem; } .kpi .rotulo { font-size: .58rem; letter-spacing: .06em; } .kpi .rotulo .ico { display: none; }
+  .kpi .delta { font-size: .66rem; }
+  .rosca-caixa { justify-content: center; } .rosca-caixa .rosca { width: 150px; }
+  .lei-card { padding: 12px; } .lei-card small { font-size: .74rem; }
   .btn-turno { width: 100%; }
-  .faixa-kpi { grid-template-columns: repeat(2, 1fr); }
   .kpi .spark { display: none; }
   .nav-inferior { display: flex; position: fixed; left: 8px; right: 8px; bottom: 8px; z-index: 30; padding: 6px; gap: 2px; overflow-x: auto; border-radius: 20px; }
   .nav-inferior .nav-item { flex: 0 0 auto; width: 68px; }
@@ -194,3 +203,8 @@
 .gov-lista { display: grid; gap: 12px; }
 .gov-card { padding: 14px; border-radius: 16px; border: 1px solid var(--borda); background: var(--vidro); }
 .gov-acoes { display: grid; grid-template-columns: 110px 1fr; gap: 10px; margin-top: 10px; }
+
+/* ---------- celular: peças que não podem esticar a página ---------- */
+.av-ficha { width: 72px; height: 72px; border-radius: 16px; }
+.linha.nw > .flex1 { min-width: 0; }
+.barra-topo .governante b, .jogador-linha b { overflow-wrap: anywhere; }

@@ -134,6 +134,9 @@ function render(animar) {
   if (chat && chatNoFim) chat.scrollTop = chat.scrollHeight;
   window.scrollTo(0, scroll);
   POS_RENDER[TAB]?.();
+  // celular: a barra de abas de baixo rola até a aba ativa
+  const navInf = $('.nav-inferior'), ativa = $('.nav-inferior .nav-item.ativa');
+  if (navInf && ativa) navInf.scrollLeft = ativa.offsetLeft - navInf.clientWidth / 2 + ativa.offsetWidth / 2;
   Retratos.carregar($('#jogo'));
   modais();
   if (typeof Tutorial !== 'undefined') Tutorial.reposicionar();

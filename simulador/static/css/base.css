@@ -230,7 +230,10 @@ hr, .sep { border: 0; border-top: 1px solid var(--borda-2); margin: 16px 0; }
 :root.sem-animacao *, :root.sem-animacao *::before, :root.sem-animacao *::after { animation: none !important; transition: none !important; }
 @media (max-width: 900px) { .g3, .g4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 620px) {
-  .g2, .g3, .g4 { grid-template-columns: 1fr; } .painel { padding: 16px; }
+  .g2, .g3, .g4 { grid-template-columns: minmax(0, 1fr); } .painel { padding: 16px; }
   .barra-linha { grid-template-columns: 104px 1fr 46px; gap: 8px; }
-  #toasts { right: 50%; transform: translateX(50%); bottom: 84px; }
+  /* no celular os avisos ficam no topo e não bloqueiam toques na barra de abas */
+  #toasts { right: 50%; transform: translateX(50%); bottom: auto; top: calc(env(safe-area-inset-top, 0px) + 10px); flex-direction: column-reverse; }
+  .toast { pointer-events: none; padding: 10px 12px; font-size: .82rem; }
+  .toast:nth-last-child(n+3) { display: none; }
 }
