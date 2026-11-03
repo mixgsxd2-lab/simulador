@@ -15,10 +15,10 @@ const Tutorial = {
       { aba: 'economia', alvo: '#aba', titulo: 'Economia em dois toques', texto: 'Baixe ou aumente os impostos e escolha como gastar: austeridade, equilíbrio ou investimento, e a área prioritária (saúde, educação…). Se a inflação ou o caixa ficarem vermelhos, escolha austeridade.' },
       { aba: 'congresso', alvo: '.lei-card', titulo: 'Leis', texto: 'Cada lei mostra a chance de ser aprovada e se agrada ou não o eleitor. Comece pelas recomendadas. Se a chance estiver baixa, use "Negociar apoio" para conquistar partidos indecisos.' },
       { aba: 'diplomacia', sel: primeiro, alvo: '#painel-ent', titulo: nac ? 'Mundo' : 'Outros estados', texto: nac ? 'Toque num país para melhorar a relação, fazer acordos comerciais ou alianças. Mercosul, BRICS e ONU têm cúpulas obrigatórias: quando chegam, você só escolhe a posição do Brasil.' : 'Toque em outro estado para cooperar ou firmar consórcios, que ajudam a economia.' },
-      { aba: 'pais', alvo: '#aba', titulo: 'País', texto: 'Aqui você vê o que cada grupo da população acha do governo, a Justiça (investigações e STF) e os gráficos da sua gestão.' },
+      { aba: 'mais', sub: 'povo', alvo: '#aba', titulo: 'Mais', texto: 'Aqui ficam o que o povo acha do governo, a Justiça, os gráficos, a sala multiplayer e os ajustes.' },
       { aba: 'governo', alvo: '.faixa-kpi', titulo: 'A eleição', texto: nac ? 'No 2º trimestre de 2026 começa a campanha. Você enfrenta os candidatos reais de 2026 (Lula, Flávio Bolsonaro, Caiado, Zema, Renan Santos e Augusto Cury, exceto o do seu partido). Comícios e TV ajudam, mas o que mais pesa é a popularidade.' : 'No 2º trimestre de 2026 começa a campanha para governador. Comícios e TV ajudam, mas o que mais pesa é a popularidade.' },
-      { aba: 'sala', alvo: '.codigo-grande', titulo: 'Jogar com amigos', texto: nac ? 'Passe este código: seus amigos entram como governadores, cada um com seu estado, e negociam verbas e apoio com você.' : 'Aqui você fala com o presidente e os outros governadores: peça verbas e obras, ofereça apoio e use o chat.' },
-      { titulo: 'Pronto!', texto: 'É só isso. Siga as dicas do painel "O que fazer agora" e avance o tempo. Para rever este tutorial, use o botão Tutorial (barra lateral ou aba Ajustes). Bom governo!' },
+      { aba: 'mais', sub: 'sala', alvo: '.codigo-grande', titulo: 'Jogar com amigos', texto: nac ? 'Passe este código: seus amigos entram como governadores, cada um com seu estado, e negociam verbas e apoio com você.' : 'Aqui você fala com o presidente e os outros governadores: peça verbas e obras, ofereça apoio e use o chat.' },
+      { titulo: 'Pronto!', texto: 'É só isso. Siga as dicas do painel "O que fazer agora" e avance o tempo. Para rever este tutorial, use o botão Tutorial (barra lateral ou Mais › Ajustes). Bom governo!' },
     ].filter(Boolean);
   },
   iniciar() {
@@ -42,6 +42,7 @@ const Tutorial = {
   },
   mostrar() {
     const p = this.lista[this.i];
+    if (p.sub && UI.subMais !== p.sub) { UI.subMais = p.sub; if (TAB === p.aba) render(false); }
     if (p.aba && TAB !== p.aba) {
       TAB = p.aba;
       if (p.sel) UI.sel = p.sel;

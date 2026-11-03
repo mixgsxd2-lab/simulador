@@ -8,10 +8,10 @@ async function boot() {
   CAT = await api('/api/catalogo');
   const salva = guardar.get('sim_aba');
   TAB = salva || 'governo';
-  if (ABAS_ANTIGAS[TAB]) [TAB, UI.subPais] = ABAS_ANTIGAS[TAB];
+  if (ABAS_ANTIGAS[TAB]) [TAB, UI.subMais] = ABAS_ANTIGAS[TAB];
   if (!VIEWS[TAB]) TAB = 'governo';
   await carregar(true);
-  if (G && !G.eu.governa && !salva) { TAB = 'sala'; render(false); }
+  if (G && !G.eu.governa && !salva) { TAB = 'mais'; UI.subMais = 'sala'; render(false); }
   sincronizar();
 }
 /* Multiplayer: a cada 3 s pergunta ao servidor só uma "assinatura" (versão, jogadores, chat, pedidos);
@@ -33,14 +33,14 @@ function avisos(antigo, novo) {
   const nomes = new Set(antigo.jogadores.map((j) => j.nome + j.papel));
   novo.jogadores.filter((j) => !nomes.has(j.nome + j.papel)).forEach((j) => toast(`${j.nome} entrou na sala como ${CAT.papeis[j.papel] || j.papel}.`));
   const ultima = antigo.mensagens[antigo.mensagens.length - 1]?.ts || 0;
-  novo.mensagens.filter((m) => m.ts > ultima && m.autor !== eu.nome).slice(-2).forEach((m) => { if (TAB !== 'sala') toast(`${m.autor}: ${m.texto}`); });
+  novo.mensagens.filter((m) => m.ts > ultima && m.autor !== eu.nome).slice(-2).forEach((m) => { if (!(TAB === 'mais' && UI.subMais === 'sala')) toast(`${m.autor}: ${m.texto}`); });
   const antes = Object.fromEntries(antigo.pedidos.map((p) => [p.id, p.status]));
   novo.pedidos.forEach((p) => {
-    if (euDecido(p, eu) && !(p.id in antes) && p.status === 'pendente') toast(`${p.nome}: ${p.autor} aguarda sua decisão na aba Sala.`);
+    if (euDecido(p, eu) && !(p.id in antes) && p.status === 'pendente') toast(`${p.nome}: ${p.autor} aguarda sua decisão em Mais › Sala.`);
     if (p.autor_id === eu.id && antes[p.id] === 'pendente' && p.status !== 'pendente') toast(`${p.nome}: ${p.status === 'aprovado' ? 'aceito' : 'recusado'}.`, p.status === 'aprovado' ? 'ok' : 'erro');
   });
   const novas = (novo.mp.propostas_para_mim || []).length - (antigo.mp?.propostas_para_mim || []).length;
-  if (novas > 0) toast('Você recebeu uma proposta de acordo. Veja a aba Sala.');
+  if (novas > 0) toast('Você recebeu uma proposta de acordo. Veja Mais › Sala.');
   if (novo.estado.meta.turno !== antigo.estado.meta.turno && antigo.mp.pronto.total > 1) toast(`Todos prontos: ${novo.estado.meta.ano} · ${novo.estado.meta.trimestre}º trimestre.`);
 }
 function aceitar(r) {
@@ -96,9 +96,8 @@ function botaoPronto(prox) {
 /* ---------- estrutura ---------- */
 function render(animar) {
   const s = G.estado, m = s.meta, eu = G.eu;
-  const fase = m.fase === 'campanha' ? 'Campanha eleitoral' : m.fase === 'fim' ? 'Partida encerrada' : `${m.mandato}º mandato · trimestre ${m.turno_mandato} de 16`;
-  const bloqueada = (k) => m.fase === 'campanha' && !['governo', 'estatisticas', 'config', 'diplomacia', 'sala'].includes(k);
-  const badges = { sala: pendenciasSala(), diplomacia: (s.diplomacia.propostas || []).length };
+  const bloqueada = (k) => m.fase === 'campanha' && !['governo', 'diplomacia', 'mais'].includes(k);
+  const badges = { mais: pendenciasSala(), diplomacia: (s.diplomacia.propostas || []).length };
   const navs = ABAS.map(([k, ic, t]) => `<button type="button" class="nav-item ${k === TAB ? 'ativa' : ''} ${bloqueada(k) ? 'bloq' : ''}" data-fn="mudarAba" data-aba="${k}" aria-current="${k === TAB ? 'page' : 'false'}">${icone(ic)}<span>${t}</span>${badges[k] ? `<i class="badge">${badges[k]}</i>` : ''}</button>`).join('');
   const prox = m.fase === 'campanha' ? 'Avançar campanha' : 'Encerrar trimestre';
   const scroll = window.scrollY;
@@ -114,9 +113,8 @@ function render(animar) {
     <div class="principal">
       <header class="vidro barra-topo"><div class="governante">${avJogador()}<div class="flex1" style="min-width:0"><b>${esc(s.jogador.nome)}</b>
         <div class="sub">${selo(s.jogador.partido)}<span>${m.modo === 'presidente' ? (m.fase === 'governo' ? 'Presidente da República' : 'Candidato(a) à Presidência') : (m.fase === 'governo' ? 'Governador(a) — ' : 'Candidato(a) — ') + esc(m.rotulo)}</span></div></div></div>
-        <div class="topo-info"><button type="button" class="chip" style="cursor:pointer" data-fn="copiarLink" data-link="${esc(location.origin + '/jogo/' + G.codigo)}" title="Copiar convite multiplayer">${icone('link', 'p')}Sala <b style="letter-spacing:.15em;color:var(--ouro)">${G.codigo}</b> · ${G.jogadores.length} jogador${G.jogadores.length > 1 ? 'es' : ''}</button><span class="chip">${icone('calendario', 'p')}${m.ano} · ${m.trimestre}º tri</span><span class="chip">${esc(fase)}</span>
-          <span class="capital" title="Pontos de ação: cada ação (lei, nomeação, negociação, diplomacia) gasta pontos. Eles voltam a cada trimestre.">${icone('raio', 'p')}Ações <b>${s.capital}</b> <span class="pips">${Array.from({ length: 8 }, (_, i) => `<i class="pip ${i < s.capital ? 'on' : ''}"></i>`).join('')}</span></span>
-          ${m.fase !== 'campanha' ? `<div class="mini-anel" title="Popularidade">${UIc.anel(s.popularidade, 100, '', corEstado(s.popularidade, 55, 35), 46, pct(s.popularidade))}</div>` : ''}
+        <div class="topo-info">${G.jogadores.length > 1 ? `<button type="button" class="chip" data-fn="irSala" title="Sala multiplayer">${icone('pessoas', 'p')}${G.jogadores.length}</button>` : ''}<span class="chip">${icone('calendario', 'p')}${m.ano} · ${m.trimestre}º tri</span>
+          <span class="capital" title="Pontos de ação: cada ação gasta pontos. Eles voltam a cada trimestre.">${icone('raio', 'p')}<b>${s.capital}</b> ações</span>
           ${botaoPronto(prox)}
           ${!eu.governa ? `<span class="selo">${esc(CAT.papeis[eu.papel] || eu.papel)} · ${esc(eu.nome)}</span>` : ''}</div></header>
       ${vKpis()}
@@ -214,10 +212,10 @@ const agir = (tipo, params) => enviar(`/api/jogos/${CODIGO}/acao`, { tipo, param
 
 const FN = {
   mudarAba(el) {
-    TAB = el.dataset.aba; if (el.dataset.sub) UI.subPais = el.dataset.sub;
+    TAB = el.dataset.aba; if (el.dataset.sub) UI.subMais = el.dataset.sub;
     guardar.set('sim_aba', TAB); render(true); window.scrollTo({ top: 0, behavior: 'smooth' });
   },
-  subPais(el) { UI.subPais = el.dataset.v; render(false); },
+  subMais(el) { UI.subMais = el.dataset.v; render(false); },
   mudarTema(el) { Tema.set(el.dataset.tema); render(false); },
   alternarTema() { Tema.alternar(); render(false); },
   async avancar(el) {
@@ -225,7 +223,7 @@ const FN = {
     await enviar(`/api/jogos/${CODIGO}/pronto`, { pronto: !G.eu.pronto });
   },
   forcarAvanco() { enviar(`/api/jogos/${CODIGO}/pronto`, { forcar: true }); },
-  irSala() { TAB = 'sala'; guardar.set('sim_aba', TAB); render(true); },
+  irSala() { TAB = 'mais'; UI.subMais = 'sala'; guardar.set('sim_aba', TAB); render(true); },
   acaoGov(el) {
     const id = el.dataset.id, tipo = el.dataset.tipo;
     const payload = { governador: id, valor: $(`#gv-valor-${id}`)?.value, setor: $(`#gv-setor-${id}`)?.value };
