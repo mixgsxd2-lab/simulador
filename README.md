@@ -25,13 +25,14 @@ python app.py                 # http://localhost:5000
 
 | Fato (fonte) | Simulado |
 |---|---|
-| Fronteiras dos países: Natural Earth via `world-atlas@2.0.2` | Eleições e candidatos adversários (fictícios, de partidos reais) |
+| Fronteiras dos países: Natural Earth via `world-atlas@2.0.2` | Votação das eleições durante a partida (inclusive a de 2026) |
 | Malha dos 26 estados e DF: API de malhas do IBGE | Economia, eventos, investigações e crises |
-| Partidos, números eleitorais e bancadas eleitas em 2022 (TSE), com fusões posteriores | Relações diplomáticas e guerras |
-| Presidentes desde 1889 (retratos carregados da Wikipédia) | Afinidade de cada partido com o governo |
-| Governadores eleitos em 2022 | |
+| Partidos, números eleitorais e bancadas eleitas em 2022 (TSE), com fusões posteriores; Partido Missão (14), registrado em 2025 | Relações diplomáticas, aceite de acordos e guerras |
+| Resultado da eleição presidencial de 2022 (TSE), com o jogador no lugar do vencedor | Candidatos fictícios (governador e eleições após 2026) |
+| Principais candidaturas à Presidência registradas no TSE para 2026 | Afinidade de cada partido com o governo |
+| Presidentes desde 1889, governadores eleitos em 2022, logotipos dos partidos e fotos dos candidatos (carregados da Wikipédia) | Efeitos das leis e dos acordos |
 
-Cores dos partidos e posições no eixo ideológico são estimativas da simulação. Os dados vão até meados de 2026 (o resultado das eleições de outubro de 2026 não está incluído).
+Cores dos partidos e posições no eixo ideológico são estimativas da simulação. O resultado real das eleições de outubro de 2026 não está incluído: na partida, a eleição de 2026 é simulada.
 
 ## Estrutura
 
@@ -57,10 +58,12 @@ simulador/
     js/avatar.js               personagem em camadas SVG
     js/mapa.js                 mapas interativos (zoom, arrastar, toque, seleção)
     js/menu.js                 menu inicial, assistente e criador de personagem
-    js/views.js, game.js       abas e núcleo da tela de jogo
+    js/views.js, game.js       abas e núcleo da tela de jogo (sincronização multiplayer)
+    js/tutorial.js             tutorial interativo da tela de jogo
     data/mundo.json, brasil.json   mapas pré-projetados (gerados por tools/gerar_mapas.py)
 tools/gerar_mapas.py           gera os mapas a partir dos dados brutos
 tests/simular.py               bot que joga RUNS completas (valida o motor)
+tests/multiplayer.py           fluxo multiplayer pela API (sala, pedidos, acordos, chat)
 ```
 
 ## Regenerar os mapas
@@ -75,16 +78,21 @@ python tools/gerar_mapas.py world50.json br.json
 
 ## Como jogar
 
-- **Presidente**: campanha de 4 trimestres (comícios, TV, alianças, debate), depois 1º e 2º turno, e então o governo. Mapa-múndi real com 194 países.
+- **Linha do tempo**: você venceu a eleição de 2022 e toma posse em 1º de janeiro de 2023. No 2º trimestre de 2026 começa a campanha (comícios, TV, alianças, debate) e em outubro de 2026 você disputa a reeleição contra os candidatos reais (Lula, Flávio Bolsonaro, Ronaldo Caiado, Romeu Zema, Renan Santos e Augusto Cury, exceto o do seu partido).
+- **Presidente**: mapa-múndi real com 194 países.
 - **Hard (Governador)**: qualquer UF no mapa do IBGE, com administração estadual e relações com a União e os outros estados.
 - **Personagem**: rosto, pele, olhos, cabelo, barba, idade (mínimo constitucional de 35 anos para Presidente e 30 para Governador), trajes, gravata, óculos, acessórios e faixa presidencial.
 - Cada trimestre dá **capital político**, gasto em leis, nomeações, negociações e diplomacia.
+- **Leis**: 44 projetos (economia, social, infraestrutura, tecnologia, meio ambiente, justiça e defesa). Ordinárias exigem maioria; emendas, 3/5.
+- **Diplomacia**: reuniões em quatro formatos (telefonema, chanceleres, cúpula presidencial, visita de Estado) com pautas de economia, comércio, segurança e meio ambiente. Cada proposta mostra a chance de aceite (relação, interesse do bloco, prestígio, ministro e concessões). Acordos geram efeitos a cada trimestre; outros países enviam propostas que você aceita ou recusa; há cúpulas de blocos (Mercosul, BRICS, UE…).
+- **Tutorial**: abre na primeira partida e pode ser revisto pelo botão Tutorial; o menu tem a tela **Como jogar**.
 - Mandato de 16 trimestres, no máximo 2 consecutivos. RUN **curta** (1 mandato), **média** (2) ou **longa** (2 + eleição do sucessor).
-- **Multiplayer**: o anfitrião governa; os outros entram pelo código e enviam pedidos que o anfitrião aprova ou nega.
+- **Multiplayer**: o anfitrião governa; os outros entram pelo código e enviam pedidos que o anfitrião aprova ou nega. A aba **Sala** mostra quem está online, os pedidos e o chat; a tela se sincroniza sozinha a cada 3 s (`/api/jogos/<código>/sinal`). Líderes estrangeiros propõem acordos e aceitam ou rejeitam as propostas do anfitrião.
 
 ## Expandir
 
 - Novas leis: `simulador/data/politica.py` (`LEIS`). Novos eventos: `simulador/data/eventos.py`. Novos cenários: `CENARIOS`.
 - Novas ações: função em `engine/acoes.py` + entrada em `HANDLERS` + botão em `static/js/views.js`.
 - Novos componentes visuais: `UIc` em `static/js/core.js`.
-- Teste do motor: `python tests/simular.py`.
+- Novos acordos diplomáticos: `PAUTAS` em `engine/diplomacia.py`.
+- Testes: `python tests/simular.py` (motor) e `python tests/multiplayer.py` (API multiplayer).

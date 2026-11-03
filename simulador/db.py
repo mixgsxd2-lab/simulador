@@ -54,9 +54,19 @@ def fechar_db(_=None):
         conn.close()
 
 
+MIGRACOES = [
+    "ALTER TABLE jogadores ADD COLUMN visto REAL NOT NULL DEFAULT 0",  # presença (online) no multiplayer
+]
+
+
 def init_db():
     conn = conectar()
     conn.executescript(SCHEMA)
+    for sql in MIGRACOES:  # bancos criados antes da coluna existir
+        try:
+            conn.execute(sql)
+        except sqlite3.OperationalError:
+            pass
     conn.close()
 
 

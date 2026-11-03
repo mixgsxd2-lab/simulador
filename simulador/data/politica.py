@@ -26,6 +26,45 @@ PARTIDOS = [
     {"sigla": "CIDADANIA", "nome": "Cidadania", "numero": 23, "fundacao": 1992, "cor": "#d81b7a", "espectro": "Centro", "eco": 0.1, "soc": -0.3, "peso": 4, "alta": 0},
     {"sigla": "NOVO", "nome": "Partido Novo", "numero": 30, "fundacao": 2011, "cor": "#ff6a13", "espectro": "Direita liberal", "eco": 1.0, "soc": 0.2, "peso": 3, "alta": 1},
     {"sigla": "REDE", "nome": "Rede Sustentabilidade", "numero": 18, "fundacao": 2015, "cor": "#0aa39a", "espectro": "Centro-esquerda", "eco": -0.4, "soc": -0.8, "peso": 2, "alta": 0},
+    # Missão: registrado pelo TSE em novembro de 2025 (número 14); não existia em 2022, por isso começa sem bancada.
+    {"sigla": "MISSÃO", "nome": "Partido Missão", "numero": 14, "fundacao": 2025, "cor": "#f2b800", "espectro": "Direita liberal", "eco": 0.8, "soc": 0.4, "peso": 0, "alta": 0},
+]
+
+# Títulos dos artigos na Wikipédia em português: o navegador carrega o logotipo/foto real de cada partido.
+WIKI_PARTIDOS = {
+    "PL": "Partido Liberal (2006)", "PT": "Partido dos Trabalhadores", "UNIÃO": "União Brasil", "PP": "Progressistas",
+    "MDB": "Movimento Democrático Brasileiro", "PSD": "Partido Social Democrático (2011)", "REPUBLICANOS": "Republicanos (partido político)",
+    "PDT": "Partido Democrático Trabalhista", "PSB": "Partido Socialista Brasileiro", "PSDB": "Partido da Social Democracia Brasileira",
+    "PSOL": "Partido Socialismo e Liberdade", "PODE": "Podemos (Brasil)", "AVANTE": "Avante (partido político)",
+    "PCdoB": "Partido Comunista do Brasil", "PV": "Partido Verde (Brasil)", "SOLIDARIEDADE": "Solidariedade (partido político)",
+    "PRD": "Partido Renovação Democrática", "CIDADANIA": "Cidadania (partido político)", "NOVO": "Partido Novo",
+    "REDE": "Rede Sustentabilidade", "MISSÃO": "Missão (partido político)",
+}
+for _p in PARTIDOS:
+    _p["wiki"] = WIKI_PARTIDOS.get(_p["sigla"])
+
+# Eleição presidencial de 2022 (TSE, % dos votos válidos). Na partida, o jogador ocupa o lugar do vencedor.
+ELEICAO_2022 = {
+    "turno1": [
+        {"nome": "Luiz Inácio Lula da Silva", "partido": "PT", "pct": 48.43, "wiki": "Luiz Inácio Lula da Silva"},
+        {"nome": "Jair Bolsonaro", "partido": "PL", "pct": 43.20, "wiki": "Jair Bolsonaro"},
+        {"nome": "Simone Tebet", "partido": "MDB", "pct": 4.16, "wiki": "Simone Tebet"},
+        {"nome": "Ciro Gomes", "partido": "PDT", "pct": 3.04, "wiki": "Ciro Gomes"},
+        {"nome": "Soraya Thronicke", "partido": "UNIÃO", "pct": 0.51, "wiki": "Soraya Thronicke"},
+        {"nome": "Felipe d'Avila", "partido": "NOVO", "pct": 0.47, "wiki": "Felipe d'Avila"},
+    ],
+    "turno2": [50.90, 49.10],
+}
+
+# Principais candidaturas à Presidência registradas no TSE para 2026 (fato). A "forca" é uma estimativa
+# da simulação; o desempenho na partida é simulado e não reproduz o resultado real.
+CANDIDATOS_2026 = [
+    {"nome": "Lula", "nome_completo": "Luiz Inácio Lula da Silva", "partido": "PT", "wiki": "Luiz Inácio Lula da Silva", "forca": 50},
+    {"nome": "Flávio Bolsonaro", "partido": "PL", "wiki": "Flávio Bolsonaro", "forca": 48},
+    {"nome": "Ronaldo Caiado", "partido": "PSD", "wiki": "Ronaldo Caiado", "forca": 38},
+    {"nome": "Romeu Zema", "partido": "NOVO", "wiki": "Romeu Zema", "forca": 37},
+    {"nome": "Renan Santos", "partido": "MISSÃO", "wiki": "Renan Santos", "forca": 34},
+    {"nome": "Augusto Cury", "partido": "AVANTE", "wiki": "Augusto Cury", "forca": 30},
 ]
 
 IDEOLOGIAS = {
@@ -68,6 +107,9 @@ PROPOSTAS = {
     "inflacao": {"nome": "Inflação abaixo de 4%", "meta": ("economia.inflacao", -1, None, 4.0)},
     "divida": {"nome": "Reduzir a dívida em 3 pontos do PIB", "meta": ("economia.divida_pib", -1, 3.0)},
     "desigualdade": {"nome": "Reduzir a desigualdade (Gini -3)", "meta": ("sociedade.desigualdade", -1, 3.0)},
+    "isencao_ir": {"nome": "Isenção do IR até R$ 5 mil", "lei": "isencao_ir"},
+    "escala_6x1": {"nome": "Fim da escala 6x1", "lei": "fim_6x1"},
+    "saneamento": {"nome": "Saneamento para todos", "lei": "saneamento"},
 }
 
 PASTAS = {
@@ -168,6 +210,67 @@ LEIS = {
     "lei_midia": {"nome": "Regulação da mídia", "cat": "Justiça", "tipo": "ordinaria", "custo": 2, "eco": -0.3, "soc": 0.1, "risco": 0.5, "escopos": ["nacional"],
         "desc": "Mais controle sobre conteúdo. A imprensa reage.",
         "efeitos": {"sociedade.midia": -10, "sociedade.polarizacao": 3, "justica.corrupcao": -2}},
+    # ---- leis adicionadas (inspiradas em debates reais do Congresso; efeitos simulados) ----
+    "arcabouco_fiscal": {"nome": "Novo arcabouço fiscal", "cat": "Economia", "tipo": "ordinaria", "custo": 2, "eco": 0.2, "soc": 0, "risco": 0.0, "escopos": ["nacional"],
+        "desc": "Regra de controle de gastos atrelada à receita. Agrada o mercado.",
+        "efeitos": {"economia.confianca": 5, "orcamento.obrig": -0.01, "economia.tendencia": 0.1, "popularidade": -1}},
+    "teto_gastos": {"nome": "Teto de gastos rígido", "cat": "Economia", "tipo": "emenda", "custo": 3, "eco": 0.7, "soc": 0.1, "risco": 0.05, "escopos": ["nacional", "estadual"],
+        "desc": "Congela despesas por anos. Ajuste forte, serviços apertados.",
+        "efeitos": {"economia.confianca": 6, "orcamento.obrig": -0.03, "popularidade": -3, "setores.saude": -3, "setores.educacao": -3}},
+    "isencao_ir": {"nome": "Isenção do IR até R$ 5 mil", "cat": "Economia", "tipo": "ordinaria", "custo": 2, "eco": -0.3, "soc": 0, "risco": 0.0, "escopos": ["nacional"],
+        "desc": "Quem ganha até R$ 5 mil deixa de pagar imposto de renda.",
+        "efeitos": {"popularidade": 5, "impostos.renda": -1.5, "sociedade.desigualdade": -1, "economia.confianca": -2}},
+    "taxar_dividendos": {"nome": "Taxação de lucros e dividendos", "cat": "Economia", "tipo": "ordinaria", "custo": 2, "eco": -0.5, "soc": 0, "risco": 0.1, "escopos": ["nacional"],
+        "desc": "Volta a tributar dividendos. Arrecada e reduz a desigualdade.",
+        "efeitos": {"economia.caixa": 50, "economia.confianca": -4, "sociedade.desigualdade": -2, "popularidade": 1}},
+    "fim_6x1": {"nome": "Fim da escala 6x1", "cat": "Economia", "tipo": "emenda", "custo": 3, "eco": -0.6, "soc": -0.1, "risco": 0.05, "escopos": ["nacional"],
+        "desc": "Jornada com dois dias de folga. Popular entre trabalhadores; empresários resistem.",
+        "efeitos": {"popularidade": 5, "economia.desemprego": 0.3, "economia.confianca": -5, "economia.tendencia": -0.1, "sociedade.protestos": -3}},
+    "novo_ensino_medio": {"nome": "Novo ensino médio", "cat": "Social", "tipo": "ordinaria", "custo": 2, "eco": 0.1, "soc": 0, "risco": 0.0, "escopos": ["nacional", "estadual"],
+        "desc": "Itinerários formativos e ensino técnico integrado.",
+        "efeitos": {"setores.educacao": 6, "sociedade.protestos": 2, "economia.tendencia": 0.05}},
+    "escolas_civico_militares": {"nome": "Escolas cívico-militares", "cat": "Social", "tipo": "ordinaria", "custo": 2, "eco": 0, "soc": 0.7, "risco": 0.1, "escopos": ["nacional", "estadual"],
+        "desc": "Gestão compartilhada com militares em escolas públicas.",
+        "efeitos": {"setores.seguranca": 2, "setores.educacao": 2, "sociedade.polarizacao": 4}},
+    "lei_cotas": {"nome": "Renovação da Lei de Cotas", "cat": "Social", "tipo": "ordinaria", "custo": 2, "eco": -0.2, "soc": -0.6, "risco": 0.0, "escopos": ["nacional"],
+        "desc": "Mantém e amplia cotas em universidades e concursos.",
+        "efeitos": {"sociedade.desigualdade": -2, "setores.educacao": 2, "sociedade.polarizacao": 2}},
+    "tarifa_zero": {"nome": "Tarifa zero no transporte", "cat": "Social", "tipo": "ordinaria", "custo": 2, "eco": -0.6, "soc": -0.1, "risco": 0.0, "escopos": ["nacional", "estadual"],
+        "desc": "Ônibus e metrô gratuitos. Muito popular, muito caro.",
+        "efeitos": {"popularidade": 3, "economia.caixa": -50, "setores.infraestrutura": 3, "sociedade.desigualdade": -1}},
+    "saneamento": {"nome": "Universalização do saneamento", "cat": "Infraestrutura", "tipo": "ordinaria", "custo": 2, "eco": 0.2, "soc": 0, "risco": 0.0, "escopos": ["nacional", "estadual"],
+        "desc": "Água e esgoto para todos com parcerias privadas.",
+        "efeitos": {"setores.saude": 4, "setores.infraestrutura": 4, "economia.caixa": -30, "popularidade": 1}},
+    "transicao_energetica": {"nome": "Transição energética e hidrogênio verde", "cat": "Infraestrutura", "tipo": "ordinaria", "custo": 2, "eco": 0, "soc": -0.2, "risco": 0.0, "escopos": ["nacional", "estadual"],
+        "desc": "Eólica, solar e hidrogênio verde. Investimento e imagem externa.",
+        "efeitos": {"setores.infraestrutura": 4, "setores.meio_ambiente": 4, "economia.tendencia": 0.15, "economia.caixa": -40, "diplomacia.onu": 2}},
+    "marco_ia": {"nome": "Marco legal da inteligência artificial", "cat": "Tecnologia", "tipo": "ordinaria", "custo": 2, "eco": 0.1, "soc": 0, "risco": 0.05, "escopos": ["nacional"],
+        "desc": "Regras para o uso de IA com segurança jurídica para empresas.",
+        "efeitos": {"economia.tendencia": 0.15, "economia.confianca": 2}},
+    "fake_news": {"nome": "Lei das Fake News", "cat": "Tecnologia", "tipo": "ordinaria", "custo": 2, "eco": -0.2, "soc": -0.2, "risco": 0.3, "escopos": ["nacional"],
+        "desc": "Responsabiliza plataformas por desinformação. Acusada de censura pela oposição.",
+        "efeitos": {"sociedade.midia": -4, "sociedade.polarizacao": 3, "justica.corrupcao": -1, "justica.confianca_stf": 1}},
+    "escolas_conectadas": {"nome": "Escolas conectadas", "cat": "Tecnologia", "tipo": "ordinaria", "custo": 1, "eco": -0.1, "soc": 0, "risco": 0.0, "escopos": ["nacional", "estadual"],
+        "desc": "Internet de alta velocidade e computadores nas escolas públicas.",
+        "efeitos": {"setores.educacao": 4, "setores.infraestrutura": 2, "economia.caixa": -25}},
+    "mercado_carbono": {"nome": "Mercado de carbono", "cat": "Meio ambiente", "tipo": "ordinaria", "custo": 2, "eco": 0.3, "soc": -0.3, "risco": 0.0, "escopos": ["nacional"],
+        "desc": "Empresas compram e vendem créditos de emissão.",
+        "efeitos": {"setores.meio_ambiente": 5, "diplomacia.onu": 3, "economia.caixa": 20, "economia.tendencia": 0.05}},
+    "marco_temporal": {"nome": "Marco temporal das terras indígenas", "cat": "Meio ambiente", "tipo": "ordinaria", "custo": 2, "eco": 0.5, "soc": 0.7, "risco": 0.5, "escopos": ["nacional"],
+        "desc": "Limita demarcações. Agrada o agro; o STF tende a derrubar.",
+        "efeitos": {"economia.tendencia": 0.1, "setores.meio_ambiente": -6, "diplomacia.onu": -4, "sociedade.polarizacao": 5}},
+    "maioridade_penal": {"nome": "Redução da maioridade penal", "cat": "Justiça", "tipo": "emenda", "custo": 3, "eco": 0, "soc": 0.9, "risco": 0.45, "escopos": ["nacional"],
+        "desc": "Jovens de 16 anos respondem como adultos por crimes graves.",
+        "efeitos": {"setores.seguranca": 3, "popularidade": 2, "sociedade.polarizacao": 6, "diplomacia.onu": -2}},
+    "porte_armas": {"nome": "Flexibilização do porte de armas", "cat": "Justiça", "tipo": "ordinaria", "custo": 2, "eco": 0.2, "soc": 0.8, "risco": 0.2, "escopos": ["nacional"],
+        "desc": "Facilita o acesso do cidadão a armas de fogo.",
+        "efeitos": {"setores.seguranca": -1, "sociedade.polarizacao": 6, "popularidade": 1}},
+    "autonomia_pf": {"nome": "Autonomia da Polícia Federal", "cat": "Justiça", "tipo": "ordinaria", "custo": 2, "eco": 0, "soc": 0, "risco": 0.0, "escopos": ["nacional"],
+        "desc": "Mandato fixo para o diretor da PF. Investigações mais livres.",
+        "efeitos": {"justica.corrupcao": -5, "justica.independencia": 4, "congresso.afinidade_geral": -3, "sociedade.midia": 3}},
+    "reaparelhamento_ffaa": {"nome": "Reaparelhamento das Forças Armadas", "cat": "Defesa", "tipo": "ordinaria", "custo": 2, "eco": 0, "soc": 0.4, "risco": 0.0, "escopos": ["nacional"],
+        "desc": "Caças, submarinos e blindados. Mais poder militar, menos caixa.",
+        "efeitos": {"diplomacia.militar": 8, "economia.caixa": -60, "economia.tendencia": 0.05}},
 }
 
 CENARIOS = {

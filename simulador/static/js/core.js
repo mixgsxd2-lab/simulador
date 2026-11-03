@@ -121,6 +121,12 @@ const UIc = {
     return `<div class="barra-linha"><span class="suave">${rot}</span>${this.medidor(v, max, cor)}<span class="v">${texto ?? nf(v, 0)}</span></div>`;
   },
   partido(sigla, cor, num) { return `<span class="selo-partido" style="--pc:${esc(cor || '#667')}" title="${esc(sigla)}${num ? ' · ' + num : ''}">${esc(num || sigla)}</span>`; },
+  /* logotipo real do partido (Wikipédia); enquanto carrega, ou se falhar, mostra o número na cor do partido */
+  logo(p, tam = 40) {
+    if (!p) return '';
+    const w = p.wiki ? `data-wiki="${esc(p.wiki)}" data-alt="Logotipo ${esc(p.sigla)}"` : '';
+    return `<span class="logo-partido" style="--pc:${esc(p.cor || '#667')};--t:${tam}px" title="${esc(p.nome || p.sigla)}${p.numero ? ' · ' + p.numero : ''}" ${w}><b>${esc(p.numero || p.sigla)}</b></span>`;
+  },
   anel(v, max, rotulo, cor = 'var(--ouro)', tam = 112, texto) {
     const r = 44, c = 2 * Math.PI * r, p = clampN(v / max, 0, 1);
     return `<div class="anel" style="width:${tam}px;height:${tam}px"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="${r}" class="anel-fundo"/>

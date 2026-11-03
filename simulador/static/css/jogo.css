@@ -152,3 +152,37 @@
   .fluxo-linha, .controle { grid-template-columns: 110px 1fr 70px; }
   .candidato-linha { grid-template-columns: 32px minmax(0, 1fr) 70px 46px; }
 }
+
+/* ---------- avisos na navegação e presença ---------- */
+.nav-item .badge { position: absolute; top: 4px; right: 10px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; display: grid; place-items: center;
+  background: var(--vermelho); color: #fff; font-size: .65rem; font-weight: 800; font-style: normal; box-shadow: 0 0 0 2px var(--bg); }
+.inicial { position: relative; }
+.ponto-on { position: absolute; right: -3px; bottom: -3px; width: 11px; height: 11px; border-radius: 50%; background: var(--texto-3); box-shadow: 0 0 0 2px var(--bg); }
+.ponto-on.on { background: var(--verde); box-shadow: 0 0 0 2px var(--bg), 0 0 8px var(--verde); }
+
+/* ---------- reuniões diplomáticas ---------- */
+.reuniao { padding: 14px; border-radius: 16px; border: 1px solid var(--borda); background: var(--vidro); }
+.reuniao .filtros { margin-bottom: 4px; }
+.props { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; }
+.prop-card { text-align: left; display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border-radius: 12px; cursor: pointer; color: var(--texto);
+  border: 1px solid var(--borda); background: var(--vidro-2); font: inherit; transition: border-color .2s, transform .2s var(--ease); }
+.prop-card:hover:not(:disabled) { transform: translateY(-2px); border-color: var(--borda-2); }
+.prop-card.sel { border-color: var(--ouro); box-shadow: 0 0 0 1px var(--ouro); background: color-mix(in srgb, var(--ouro) 9%, var(--vidro-2)); }
+.prop-card:disabled { opacity: .55; cursor: not-allowed; }
+.prop-card b { font-size: .84rem; } .prop-card small { color: var(--texto-2); font-size: .74rem; line-height: 1.35; }
+.chance-box { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; margin-top: 12px; padding: 10px 12px; border-radius: 12px; background: var(--vidro-2); }
+.acordo-linha { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--borda); }
+.acordo-linha > .ico { color: var(--ouro); flex: none; }
+.proposta-card { padding: 12px; border-radius: 14px; border: 1px solid color-mix(in srgb, var(--ambar) 35%, var(--borda)); background: color-mix(in srgb, var(--ambar) 6%, var(--vidro)); margin-bottom: 10px; }
+
+/* ---------- tutorial ---------- */
+#tutorial { position: fixed; inset: 0; z-index: 120; pointer-events: none; }
+#tutorial[hidden] { display: none; }
+.tut-foco { position: fixed; border-radius: 16px; pointer-events: none; box-shadow: 0 0 0 9999px rgba(4, 8, 16, .62), 0 0 0 2px var(--ouro), 0 0 30px var(--ouro);
+  transition: all .35s var(--ease); }
+.tut-cartao { position: fixed; pointer-events: auto; width: min(380px, calc(100vw - 32px)); padding: 18px; background: var(--vidro-3); box-shadow: var(--sombra-forte); transition: left .35s var(--ease), top .35s var(--ease); }
+.progresso-tut { height: 4px; border-radius: 4px; background: var(--vidro-3); overflow: hidden; }
+.progresso-tut i { display: block; height: 100%; background: var(--ouro); transition: width .3s; }
+@media (max-width: 760px) {
+  .tut-cartao { left: 12px !important; right: 12px; bottom: 92px; top: auto !important; width: auto !important; transform: none !important; }
+}

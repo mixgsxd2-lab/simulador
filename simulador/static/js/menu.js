@@ -9,16 +9,16 @@ const PASSOS = [
   { id: 'territorio', t: 'Território', sub: 'Clique em um estado no mapa oficial do IBGE.', so: 'governador' },
   { id: 'partido', t: 'Partido', sub: 'Partidos reais, com bancadas eleitas em 2022 — ou funde o seu.' },
   { id: 'ideologia', t: 'Ideologia', sub: 'Sua posição define aliados, adversários e o humor do mercado.' },
-  { id: 'plataforma', t: 'Plataforma', sub: 'Até 4 promessas. Cumpri-las rende votos na reeleição.' },
+  { id: 'plataforma', t: 'Plataforma', sub: 'Até 4 promessas feitas na campanha de 2022. Cumpri-las rende votos em 2026.' },
   { id: 'personagem', t: 'Personagem', sub: 'Crie a figura pública que vai subir a rampa.' },
   { id: 'run', t: 'Partida', sub: 'Duração da RUN e cenário inicial.' },
-  { id: 'revisao', t: 'Candidatura', sub: 'Revise e registre sua candidatura.' },
+  { id: 'revisao', t: 'Posse', sub: 'Você venceu a eleição de 2022. Revise e tome posse.' },
 ];
 const ICO_PROPOSTA = { reforma_tributaria: 'moedas', reforma_previdencia: 'relogio', renda_basica: 'coracao', anticorrupcao: 'justica', seguranca: 'escudo', saude: 'coracao',
   educacao: 'capelo', infra: 'predio', privatizar: 'economia', ambiente: 'folha', emprego: 'pasta', inflacao: 'grafico', divida: 'moedas', desigualdade: 'pessoas' };
 const ICO_CENARIO = { estabilidade: 'check', crise_fiscal: 'moedas', boom_commodities: 'economia', polarizacao: 'megafone', escandalos: 'jornal', seca: 'folha', crise_global: 'globo' };
-const DURACOES = { curta: ['Curta', '1 mandato · 4 anos', 'Campanha, governo e a disputa pela reeleição.'], media: ['Média', 'até 2 mandatos · 8 anos', 'O limite constitucional de dois mandatos consecutivos.'],
-  longa: ['Longa', '2 mandatos + sucessão', 'Governe 8 anos e tente eleger seu sucessor.'] };
+const DURACOES = { curta: ['Curta', '2023–2026 · 4 anos', 'Governe o mandato e dispute a eleição de 2026 contra os candidatos reais.'], media: ['Média', 'até 2030 · 8 anos', 'Reeleição em 2026 e o segundo mandato até 2030.'],
+  longa: ['Longa', '2 mandatos + sucessão', 'Governe até 2030 e tente eleger seu sucessor.'] };
 const espectroDe = (p) => (p.eco < -0.25 ? 'esquerda' : p.eco > 0.25 ? 'direita' : 'centro');
 const partidoAtual = () => (CFG.partido_novo ? { sigla: CFG.partido || 'NOVO?', nome: CFG.partido_nome || 'Novo partido', cor: CFG.partido_cor, numero: CFG.partido_numero || '—' } : CAT.partidos.find((p) => p.sigla === CFG.partido));
 const passosAtivos = () => PASSOS.filter((p) => !p.so || p.so === CFG.modo);
@@ -88,13 +88,13 @@ function renderNovo() {
       <section class="vidro palco"><div class="palco-cab"><span class="rotulo">${String(UIm.passo + 1).padStart(2, '0')} · ${p.t}</span><h2>${tituloPasso(p.id)}</h2><p>${p.sub}</p></div>
         <div class="palco-corpo" id="corpo-passo">${PASSO[p.id]()}</div>
         <div class="navegacao"><button type="button" class="btn" data-nav="voltar" ${UIm.passo === 0 ? 'disabled' : ''}>${icone('esq', 'p')} Voltar</button>
-          ${p.id === 'revisao' ? `<button type="button" class="btn btn-ouro btn-grande" data-nav="iniciar">${icone('urna')} Registrar candidatura</button>`
+          ${p.id === 'revisao' ? `<button type="button" class="btn btn-ouro btn-grande" data-nav="iniciar">${icone('palacio')} Tomar posse</button>`
           : `<button type="button" class="btn btn-ouro" data-nav="proximo">Continuar ${icone('dir', 'p')}</button>`}</div></section>
       <aside class="vidro ficha" id="ficha">${ficha()}</aside></div></div>`;
   posPasso(p.id);
 }
 const tituloPasso = (id) => ({ cargo: 'Qual cargo você vai disputar?', territorio: 'Escolha seu estado', partido: 'Filie-se a um partido', ideologia: 'Defina sua ideologia',
-  plataforma: 'Plataforma de governo', personagem: 'Criador de personagem', run: 'Configure a partida', revisao: 'Pronto para a disputa' }[id]);
+  plataforma: 'Plataforma de governo', personagem: 'Criador de personagem', run: 'Configure a partida', revisao: 'Pronto para governar' }[id]);
 function atualizarParcial() { const c = $('#corpo-passo'); if (!c) return; const id = passosAtivos()[UIm.passo].id; c.innerHTML = PASSO[id](); $('#ficha').innerHTML = ficha(); posPasso(id); }
 
 function ficha() {
@@ -112,8 +112,8 @@ const PASSO = {
   cargo() {
     const card = (modo, titulo, txt, tags) => `<button type="button" class="escolha cargo ${CFG.modo === modo ? 'sel' : ''}" data-set="modo" data-v="${modo}">
       <div class="arte" id="arte-${modo}"></div><div class="txt"><b>${titulo}</b><small>${txt}</small><div class="linha mt">${tags.map((t) => `<span class="selo">${t}</span>`).join('')}</div></div></button>`;
-    return `<div class="cargos">${card('presidente', 'Presidente da República', 'Campanha nacional, debates na TV e segundo turno. Congresso, STF, economia e diplomacia com 194 países.', ['Mapa-múndi', 'Idade mínima 35'])}
-      ${card('governador', 'Governador · modo Hard', 'Administre qualquer um dos 26 estados ou o DF: orçamento apertado, Assembleia Legislativa e dependência de Brasília.', ['Mapa do Brasil', 'Idade mínima 30', 'Difícil'])}</div>`;
+    return `<div class="cargos">${card('presidente', 'Presidente da República', 'Eleito em 2022, você governa de 2023 a 2026 e disputa a eleição de 2026 contra os candidatos reais. Congresso, STF, economia e diplomacia com 194 países.', ['Começa em 2023', 'Mapa-múndi', 'Idade mínima 35'])}
+      ${card('governador', 'Governador · modo Hard', 'Administre qualquer um dos 26 estados ou o DF desde 2023: orçamento apertado, Assembleia Legislativa e dependência de Brasília.', ['Mapa do Brasil', 'Idade mínima 30', 'Difícil'])}</div>`;
   },
   territorio() {
     return `<div class="territorio"><div id="mapa-uf"></div><div class="vidro forte uf-info" id="uf-info">${infoUF()}</div></div>`;
@@ -121,8 +121,8 @@ const PASSO = {
   partido() {
     const filtros = [['todos', 'Todos'], ['esquerda', 'Esquerda'], ['centro', 'Centro'], ['direita', 'Direita']].map(([k, t]) => `<button type="button" class="filtro ${UIm.filtro === k ? 'ativo' : ''}" data-filtro="${k}">${t}</button>`).join('');
     const lista = CAT.partidos.filter((p) => UIm.filtro === 'todos' || espectroDe(p) === UIm.filtro).map((p, i) => `<button type="button" class="escolha partido-card entra ${CFG.partido === p.sigla && !CFG.partido_novo ? 'sel' : ''}" style="--i:${i}" data-partido="${esc(p.sigla)}">
-      <span class="partido-num" style="--pc:${p.cor}">${p.numero}</span><span class="info"><b>${esc(p.sigla)}</b><small>${esc(p.nome)}</small>
-      <small class="fraco">${esc(p.espectro)} · ${p.peso} dep. · ${p.alta} sen.</small></span></button>`).join('');
+      ${UIc.logo(p, 52)}<span class="info"><b>${esc(p.sigla)} <span class="fraco peq">${p.numero}</span></b><small>${esc(p.nome)}</small>
+      <small class="fraco">${esc(p.espectro)} · ${p.peso || p.alta ? `${p.peso} dep. · ${p.alta} sen.` : `fundado em ${p.fundacao} · sem bancada eleita em 2022`}</small></span></button>`).join('');
     const novo = `<button type="button" class="escolha partido-card ${CFG.partido_novo ? 'sel' : ''}" data-partido-novo="1"><span class="partido-num" style="--pc:${CFG.partido_cor}">${icone('mais', 'g')}</span>
       <span class="info"><b>Fundar partido</b><small>Comece pequeno, com identidade própria</small></span></button>`;
     const form = CFG.partido_novo ? `<div class="vidro forte painel mt"><div class="grade g4">
@@ -131,7 +131,7 @@ const PASSO = {
       <label class="campo">Número (10–99)<input type="number" id="p-num" min="10" max="99" value="${esc(CFG.partido_numero)}"></label></div>
       <div class="campo mt">Cor do partido<div class="amostras">${['#7c5cff', '#e0453c', '#1f9d74', '#f2b705', '#1565c0', '#ff6a13', '#a3238e', '#2b2f36'].map((c) => `<button type="button" class="amostra ${CFG.partido_cor === c ? 'sel' : ''}" style="--c:${c}" data-pcor="${c}" aria-label="Cor ${c}"></button>`).join('')}
       <input type="color" id="p-cor" value="${CFG.partido_cor}" aria-label="Cor personalizada"></div></div></div>` : '';
-    return `<div class="filtros">${filtros}<span class="selo fato" style="margin-left:auto">${icone('info', 'p')} Bancadas: TSE 2022, com fusões</span></div>
+    return `<div class="filtros">${filtros}<span class="selo fato" style="margin-left:auto">${icone('info', 'p')} Bancadas: TSE 2022, com fusões · logotipos: Wikipédia</span></div>
       <div class="grade gauto">${lista}${novo}</div>${form}
       <p class="mini fraco mt mb0">Números eleitorais e bancadas são dados reais; cores dos selos e posições ideológicas são aproximações da simulação.</p>`;
   },
@@ -177,7 +177,9 @@ const PASSO = {
       <div class="grade g3 mt"><div class="vidro forte painel"><div class="rotulo">Ideologia</div><b>${esc(CAT.ideologias[CFG.ideologia]?.nome || '—')}</b></div>
         <div class="vidro forte painel"><div class="rotulo">Idade</div><b>${CFG.idade} anos</b></div><div class="vidro forte painel"><div class="rotulo">Partida</div><b>${DURACOES[CFG.duracao][0]}</b></div></div>
       <div class="rotulo mt-g">Promessas</div><div class="linha mt">${props}</div>
-      <p class="peq suave mt-g">A campanha dura 4 trimestres: comícios, TV, alianças e debate. Depois vêm o 1º e, se necessário, o 2º turno. Adversários são candidatos fictícios de partidos reais.</p></div></div>`;
+      <p class="peq suave mt-g">${CFG.modo === 'presidente'
+        ? 'Cenário alternativo: você venceu a eleição presidencial de 2022 (percentuais oficiais do TSE, com você no lugar do vencedor) e toma posse em 1º de janeiro de 2023. Em 2026 enfrenta os candidatos reais registrados no TSE.'
+        : 'Você venceu a eleição estadual de 2022 e toma posse em 1º de janeiro de 2023. Em 2026 disputa a reeleição.'} Na primeira partida, um tutorial explica cada sistema.</p></div></div>`;
   },
 };
 
@@ -223,6 +225,7 @@ function infoUF() {
 }
 
 async function posPasso(id) {
+  Retratos.carregar($('#tela-novo'));
   if (id === 'cargo') {
     const [m, b] = await Promise.all([Mapas.carregar('mundo'), Mapas.carregar('brasil')]);
     const a1 = $('#arte-presidente'), a2 = $('#arte-governador');
@@ -266,7 +269,7 @@ async function iniciar() {
   for (let i = 0; i < ps.length; i++) { const e = validar(ps[i].id); if (e) { UIm.passo = i; renderNovo(); return toast(e, 'erro'); } }
   const ov = $('#carregando');
   ov.hidden = false;
-  const msgs = ['Registrando candidatura no TSE…', 'Convocando a bancada de ' + (partidoAtual()?.sigla || 'seu partido') + '…', 'Montando o Congresso Nacional…', 'Carregando o mapa e as relações internacionais…', 'Abrindo as pesquisas de intenção de voto…'];
+  const msgs = ['Apurando a eleição de 2022…', 'Convocando a bancada de ' + (partidoAtual()?.sigla || 'seu partido') + '…', 'Montando o Congresso Nacional…', 'Carregando o mapa e as relações internacionais…', 'Preparando a posse de 1º de janeiro de 2023…'];
   let i = 0;
   const barra = $('#carregando .medidor i');
   const tick = setInterval(() => { i = Math.min(i + 1, msgs.length - 1); $('#carregando .msg').textContent = msgs[i]; barra.style.width = `${((i + 1) / msgs.length) * 100}%`; }, 520);
@@ -275,7 +278,7 @@ async function iniciar() {
   const [r] = await Promise.all([api('/api/jogos', corpo), new Promise((ok) => setTimeout(ok, 2700))]);
   clearInterval(tick);
   if (!r.ok) { ov.hidden = true; return toast(r.erro || 'Erro ao criar a partida.', 'erro'); }
-  barra.style.width = '100%'; $('#carregando .msg').textContent = 'Tudo pronto. Boa campanha!';
+  barra.style.width = '100%'; $('#carregando .msg').textContent = 'Tudo pronto. Bom governo!';
   Tokens.set(r.codigo, r.token);
   setTimeout(() => { location.href = '/jogo/' + r.codigo; }, 400);
 }
@@ -296,7 +299,7 @@ RENDER.continuar = async () => {
 
 /* ---------- MULTIPLAYER ---------- */
 RENDER.multi = () => {
-  const papeis = [['governador', 'mapa', 'Pede repasses ao governo federal.'], ['ministro', 'pasta', 'Pede mais orçamento para sua área.'], ['parlamentar', 'congresso', 'Troca apoio por emendas.'], ['lider', 'globo', 'Propõe acordos, alianças ou sanções.']];
+  const papeis = [['governador', 'mapa', 'Pede repasses ao governo federal.'], ['ministro', 'pasta', 'Pede mais orçamento para sua área.'], ['parlamentar', 'congresso', 'Troca apoio por emendas.'], ['lider', 'globo', 'Representa um país: propõe acordos e aceita ou rejeita as propostas do anfitrião.']];
   $('#tela-multi').innerHTML = `<div class="conteudo">${topoTela('Multiplayer', 'Entre na partida de um amigo pelo código')}
     <section class="vidro painel" style="margin-bottom:16px"><div class="linha entre"><div class="linha nw"><span class="ico-caixa" style="width:42px;height:42px;border-radius:13px;display:grid;place-items:center;background:var(--vidro-3);color:var(--ouro)">${icone('mais')}</span>
       <div><h2 class="mb0">Criar partida multiplayer</h2><div class="fraco peq">Crie sua campanha; o código da sala aparece no topo do jogo para os amigos entrarem.</div></div></div>
@@ -308,7 +311,7 @@ RENDER.multi = () => {
       <label class="campo" id="j-pais-box" hidden>País ou estado que você representa<select id="j-pais"></select></label>
       <button type="button" class="btn btn-ouro btn-grande" id="j-entrar">${icone('seta')} Entrar</button></div></section>
     <section class="vidro painel"><div class="painel-cab"><span class="ico-caixa">${icone('pessoas')}</span><h2>Como funciona</h2></div>
-      <p class="suave peq">Quem cria a partida é o anfitrião e governa. Os demais jogadores enviam pedidos que ele aprova ou nega, e todos conversam pelo chat.</p>
+      <p class="suave peq">Quem cria a partida é o anfitrião e governa. Os demais jogadores entram com o código, enviam pedidos que ele aprova ou nega e conversam pelo chat. Tudo atualiza sozinho a cada poucos segundos, e a aba <b>Sala</b> mostra quem está online.</p>
       <div class="coluna" style="gap:10px">${papeis.map(([k, ic, d]) => `<div class="linha nw"><span class="ico-caixa" style="width:36px;height:36px;border-radius:11px;display:grid;place-items:center;background:var(--vidro-3);color:var(--ouro)">${icone(ic)}</span><div><b>${esc(CAT.papeis[k])}</b><div class="fraco peq">${d}</div></div></div>`).join('')}</div></section></div></div>`;
   const sel = $('#j-papel');
   const atualizar = async () => {
@@ -325,6 +328,22 @@ RENDER.multi = () => {
     if (!r.ok) return toast(r.erro || 'Não foi possível entrar.', 'erro');
     Tokens.set(cod, r.token); location.href = '/jogo/' + cod;
   };
+};
+
+/* ---------- COMO JOGAR ---------- */
+RENDER.ajuda = () => {
+  const sec = (ic, t, txt) => `<section class="vidro painel entra"><div class="painel-cab"><span class="ico-caixa">${icone(ic)}</span><h2>${t}</h2></div><div class="peq suave">${txt}</div></section>`;
+  $('#tela-ajuda').innerHTML = `<div class="conteudo">${topoTela('Como jogar', 'Os sistemas do jogo em poucos minutos')}
+    <div class="grade g2">
+    ${sec('urna', '1. A história começa em 2022', '<p>Você venceu a eleição de 2022 (no modo presidente, com os percentuais oficiais do TSE e você no lugar do vencedor) e toma posse em <b>1º de janeiro de 2023</b>. O mandato dura 16 trimestres. No 2º trimestre de 2026 começa a campanha, e em outubro de 2026 você enfrenta os <b>candidatos reais</b> registrados no TSE, exceto o do seu partido. A votação é simulada.</p>')}
+    ${sec('raio', '2. Trimestres e capital político', '<p>Cada clique em <b>Encerrar trimestre</b> avança três meses. Ações custam <b>capital político</b> (os raios no topo), que se recupera a cada trimestre, e mais rápido com popularidade e base no Congresso altas. Eventos inesperados pedem uma decisão antes de seguir.</p>')}
+    ${sec('palacio', '3. Governar', '<p>Na aba <b>Governo</b> você nomeia ministros (competência melhora a área; falta de integridade gera escândalos), faz comunicação e acompanha as manchetes. Dar ministérios a partidos aumenta o apoio deles.</p>')}
+    ${sec('economia', '4. Administrar o país', '<p>Na aba <b>Economia</b> você define impostos e o orçamento de cada área. Mais imposto = mais caixa, menos crescimento e popularidade. Sem caixa, o déficit vira dívida. A aba <b>População</b> mostra a aprovação por grupo social e os serviços públicos.</p>')}
+    ${sec('livro', '5. Criar leis', `<p>Na aba <b>Congresso</b> há ${Object.keys(CAT.leis).length} projetos de lei, de reformas econômicas a segurança, tecnologia e meio ambiente. Leis ordinárias precisam de maioria; emendas constitucionais, de 3/5. Negocie com os partidos (emendas, pressão, cargos) para formar maioria. O STF pode derrubar leis arriscadas.</p>`)}
+    ${sec('globo', '6. Diplomacia', '<p>Clique em um país e convoque uma <b>reunião</b>: escolha o formato (telefonema, chanceleres, cúpula presidencial ou visita de Estado), a <b>pauta</b> (economia, comércio, segurança ou meio ambiente) e a proposta de acordo. O país <b>aceita ou rejeita</b> conforme a relação, o interesse do bloco e suas concessões. Outros países também mandam propostas para você aceitar ou recusar. Há ainda cúpulas de blocos, ONU, alianças, sanções e guerras.</p>')}
+    ${sec('justica', '7. Justiça e riscos', '<p>Investigações, vagas no STF e impeachment. Popularidade muito baixa, corrupção e falta de base no Congresso abrem caminho para o seu afastamento.</p>')}
+    ${sec('pessoas', '8. Multiplayer', '<p>Crie uma partida e passe o <b>código da sala</b> (no topo do jogo). Os amigos entram pelo menu Multiplayer como governador, ministro, parlamentar ou líder de outro país. Eles mandam pedidos que você aprova ou nega; líderes estrangeiros negociam acordos com você.</p>')}
+    </div><div class="linha mt-g" style="justify-content:center"><button type="button" class="btn btn-ouro btn-grande" data-ir="novo">${icone('play', 'p')} Começar a governar</button></div></div>`;
 };
 
 /* ---------- GALERIA ---------- */

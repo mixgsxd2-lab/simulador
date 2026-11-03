@@ -1,5 +1,6 @@
 /* Abas da tela de jogo. Estado global: G (pacote da API), CAT (catálogo), UI (estado local de interface). */
-const UI = { sel: null, nomeSel: '', destaque: null, catLei: 'todas', vista: {}, draft: null };
+const UI = { sel: null, nomeSel: '', destaque: null, catLei: 'todas', vista: {}, draft: null,
+  reu: { formato: 'cupula', pauta: 'comercio', proposta: null, concessao: 'nenhuma' } };
 const S = () => G.estado;
 const D = () => G.derivados;
 const NAC = () => G.estado.meta.escopo === 'nacional';
@@ -8,7 +9,7 @@ const cargo = () => (NAC() ? 'Presidente' : 'Governador');
 const rotuloPasta = (p) => CAT.pastas[p][S().meta.escopo] || CAT.pastas[p].nacional;
 const ICO_SETOR = { saude: 'coracao', educacao: 'capelo', seguranca: 'escudo', infraestrutura: 'predio', social: 'pessoas', meio_ambiente: 'folha', defesa: 'escudo' };
 const ICO_PASTA = { fazenda: 'moedas', casa_civil: 'palacio', saude: 'coracao', educacao: 'capelo', seguranca: 'escudo', infraestrutura: 'predio', meio_ambiente: 'folha', desenvolvimento_social: 'pessoas', defesa: 'mira', relacoes_exteriores: 'globo' };
-const ICO_CAT = { Economia: 'moedas', Social: 'coracao', Infraestrutura: 'predio', 'Meio ambiente': 'folha', Justiça: 'justica' };
+const ICO_CAT = { Economia: 'moedas', Social: 'coracao', Infraestrutura: 'predio', 'Meio ambiente': 'folha', Justiça: 'justica', Tecnologia: 'raio', Defesa: 'escudo' };
 
 function bA(txt, tipo, params, cls = '', extra = '', ico = '') {
   return `<button type="button" class="btn ${cls}" data-a="${tipo}" data-p='${esc(JSON.stringify(params || {}))}' ${PODE() ? '' : 'disabled'} ${extra}>${ico ? icone(ico, 'p') : ''}${txt}</button>`;
@@ -17,6 +18,9 @@ const bF = (txt, fn, cls = '', extra = '', ico = '') => `<button type="button" c
 const apJogador = () => { const s = S(); return { ...s.jogador.aparencia, ...(s.meta.modo === 'presidente' && s.meta.mandato > 0 ? { faixa: 'sim' } : {}) }; };
 const avJogador = (cls = '') => `<div class="avatar-moldura ${cls}">${Avatar.svg(apJogador(), { idade: S().jogador.idade + Math.floor(S().meta.turno / 4), partidoCor: partidoDe(S().jogador.partido).cor })}</div>`;
 const avNPC = (nome, idade = 52) => `<div class="avatar-moldura">${Avatar.svg(Avatar.aleatoria(nome), { idade })}</div>`;
+/* candidato: o jogador, um político real (foto da Wikipédia sobre o avatar) ou um personagem fictício */
+const avCand = (c) => (c.id === 'jogador' ? avJogador() : c.wiki
+  ? `<div class="avatar-moldura foto-real" data-wiki="${esc(c.wiki)}" data-alt="${esc(c.nome)}">${Avatar.svg(Avatar.aleatoria(c.nome), { idade: 60 })}</div>` : avNPC(c.nome));
 const partidoDe = (sigla) => S().congresso.partidos[sigla] || { sigla, cor: '#777' };
 const selo = (sigla) => { const p = partidoDe(sigla); return UIc.partido(p.sigla, p.cor, p.numero); };
 const pct = (v, d = 0) => nf(v, d) + '%';
@@ -83,11 +87,11 @@ function painelCampanha() {
   const titulo = s.meta.fase === 'campanha' ? `Campanha para ${cargo()}` : c.sucessor ? 'Campanha do seu sucessor' : 'Campanha de reeleição';
   const livres = Object.values(s.congresso.partidos).filter((p) => !p.jogador && !c.coalizao.includes(p.sigla)).sort((a, b) => b.baixa - a.baixa);
   const lider = c.pesquisa[0]?.pct || 1;
-  const linhas = c.pesquisa.map((p) => `<div class="candidato-linha ${p.id === 'jogador' ? 'eu' : ''}">${p.id === 'jogador' ? avJogador() : avNPC(p.nome)}
-    <div><b class="peq">${esc(p.nome)}</b><div class="mini fraco">${selo(p.partido)} ${esc(p.partido)}</div></div>${UIc.medidor(p.pct, lider * 1.1, p.id === 'jogador' ? 'var(--ouro)' : partidoDe(p.partido).cor)}<b class="num" style="text-align:right">${nf(p.pct, 1)}%</b></div>`).join('');
+  const linhas = c.pesquisa.map((p) => `<div class="candidato-linha ${p.id === 'jogador' ? 'eu' : ''}">${avCand(p)}
+    <div><b class="peq">${esc(p.nome)}</b><div class="mini fraco">${selo(p.partido)} ${esc(p.partido)}${p.wiki ? ' <span class="selo real">real</span>' : ''}</div></div>${UIc.medidor(p.pct, lider * 1.1, p.id === 'jogador' ? 'var(--ouro)' : partidoDe(p.partido).cor)}<b class="num" style="text-align:right">${nf(p.pct, 1)}%</b></div>`).join('');
   const acao = (a, ic, t, custo) => `<button type="button" class="acao-c" data-a="campanha" data-p='{"acao":"${a}"}' ${PODE() ? '' : 'disabled'}>${icone(ic)}<b>${t}</b><small>${custo}</small></button>`;
   return `<section class="vidro campanha-hero entra"><div class="painel-cab"><span class="ico-caixa">${icone('urna')}</span><div class="flex1"><h2>${titulo}</h2>
-      <div class="mini fraco">Adversários são fictícios, de partidos reais</div></div><span class="selo ouro">${s.meta.fase === 'campanha' ? c.turnos_restantes + ' trim. até a eleição' : 'Eleição ao fim do mandato'}</span></div>
+      <div class="mini fraco">${c.reais ? 'Eleição de 2026: candidaturas reais registradas no TSE · votação simulada' : 'Adversários são fictícios, de partidos reais'}</div></div><span class="selo ouro">${s.meta.fase === 'campanha' ? c.turnos_restantes + ' trim. até a eleição' : 'Eleição ao fim do mandato'}</span></div>
     <div class="rotulo">Pesquisa de intenção de voto</div>${linhas}
     <div class="linha mt"><span class="chip">${icone('moedas', 'p')} Fundo ${nf(c.fundo, 0)}</span><span class="chip">${icone('olho', 'p')} Reconhecimento ${pct(c.reconhecimento)}</span>
       <span class="chip">${icone('alerta', 'p')} Rejeição ${pct(c.rejeicao)}</span><span class="chip">${icone('aperto', 'p')} Coalizão: ${c.coalizao.length ? c.coalizao.join(', ') : '—'}</span></div>
@@ -119,6 +123,12 @@ function vAgenda() {
   if (s.evento) itens.push(`<div class="dossie"><b>${icone('alerta', 'p')} ${esc(s.evento.titulo)}</b><div class="peq suave">Decisão pendente.</div></div>`);
   if (j.impeachment.processo) itens.push(`<div class="processo"><b class="ruim">${icone('alerta', 'p')} Processo de impeachment em curso</b><div class="peq">Veja a aba Justiça.</div></div>`);
   if (j.vaga_stf) itens.push(`<div class="dossie"><b>${icone('justica', 'p')} Vaga aberta no STF</b><div class="peq suave">Indique um ministro na aba Justiça.</div></div>`);
+  const props = (s.diplomacia.propostas || []).length;
+  if (props) itens.push(`<div class="dossie"><b>${icone('globo', 'p')} ${props} proposta(s) de outros ${NAC() ? 'países' : 'estados'}</b><div class="peq suave">Aceite ou recuse na aba Diplomacia antes que expirem.</div></div>`);
+  if (s.meta.fase === 'governo' && !s.campanha.ativa && (s.meta.mandato < 2 || s.meta.duracao === 'longa') && s.meta.turno_mandato < 13) {
+    const falta = 13 - s.meta.turno_mandato, anoEleicao = s.meta.ano + Math.floor((s.meta.trimestre + 14 - s.meta.turno_mandato) / 4);
+    itens.push(`<div class="dossie"><b>${icone('urna', 'p')} Eleição de ${anoEleicao}</b><div class="peq suave">A campanha começa em ${falta} trimestre(s). Popularidade alta e promessas cumpridas rendem votos.</div></div>`);
+  }
   const vagos = Object.values(s.ministros).filter((m) => !m).length;
   if (vagos && s.meta.fase !== 'campanha') itens.push(`<div class="dossie"><b>${icone('pasta', 'p')} ${vagos} pasta(s) sem titular</b><div class="peq suave">Setores sem ministro pioram a cada trimestre.</div></div>`);
   return itens.length ? UIc.painel('Agenda', 'calendario', itens.join('')) : '';
@@ -204,7 +214,7 @@ function vCongresso() {
   const filtro = [['', 'Todos'], ['base', 'Base'], ['independente', 'Independentes'], ['oposição', 'Oposição']].map(([k, t]) => `<button type="button" class="filtro ${(UI.destaque || '') === k ? 'ativo' : ''}" data-fn="destacar" data-v="${k}">${t}</button>`).join('');
   const legenda = d.partidos.filter((p) => p.baixa >= (alta ? 8 : 2)).map((p) => `<span><i style="background:${p.cor}"></i>${esc(p.sigla)} ${p.baixa}</span>`).join('');
   const casa = (nome, k, total, ap) => `<div class="casa">${hemiciclo(d.partidos, k, total, UI.destaque)}<div class="num-casa">${total}</div><div class="rotulo">${nome}</div><div class="peq mt">Base do governo: <b style="color:${corEstado(ap, 50, 30)}">${pct(ap)}</b></div></div>`;
-  const tabela = d.partidos.map((p) => `<tr><td><div class="linha nw">${UIc.partido(p.sigla, p.cor, p.numero)}<div><b>${esc(p.sigla)}</b>${p.jogador ? ' <span class="selo ouro">seu partido</span>' : ''}<div class="mini fraco">${esc(p.nome)}</div></div></div></td>
+  const tabela = d.partidos.map((p) => `<tr><td><div class="linha nw">${UIc.logo(p, 34)}<div><b>${esc(p.sigla)}</b>${p.jogador ? ' <span class="selo ouro">seu partido</span>' : ''}<div class="mini fraco">${esc(p.nome)}</div></div></div></td>
     <td class="num">${p.baixa}${alta ? ` / ${p.alta}` : ''}</td><td style="min-width:120px">${UIc.medidor(p.afin, 100, p.posicao === 'base' ? 'var(--verde)' : p.posicao === 'oposição' ? 'var(--vermelho)' : 'var(--ambar)', true)}<span class="mini fraco">${nf(p.afin, 0)} · ${p.posicao}</span></td>
     <td style="white-space:nowrap;text-align:right">${bA('Emendas', 'negociar', { tipo: 'emendas', partido: p.sigla, valor: 10 }, 'btn-mini', 'title="R$ 10 bi · 1 capital"', 'moedas')} ${bA('', 'negociar', { tipo: 'pressionar', partido: p.sigla }, 'btn-mini btn-icone', 'title="Pressionar (1 capital)" aria-label="Pressionar"', 'megafone')}</td></tr>`).join('');
   const aprov = new Set(c.leis_aprovadas.map((l) => l.id));
@@ -241,16 +251,61 @@ function painelEntidade() {
     ${UIc.barra('Relação', x.rel, corRelacao(x.rel))}`;
   if (!NAC()) {
     return `${st}<div class="grade g2 peq"><div><div class="rotulo">PIB</div><b>R$ ${nf(x.pib, 0)} bi</b></div><div><div class="rotulo">Governador (eleito em 2022)</div><b>${esc(x.lider || '—')}</b></div></div>
-      <div class="grupo-btn mt">${bA('Missão de cooperação (1)', 'acao_diplomatica', { acao: 'melhorar', alvo: x.cod }, 'btn-mini', '', 'aperto')}${bA('Firmar consórcio (2)', 'acao_diplomatica', { acao: 'tratado', alvo: x.cod }, 'btn-mini btn-ouro', '', 'link')}</div><p class="mini fraco mt mb0">Consórcio exige relação ≥ 55.</p>`;
+      ${painelReuniao(x)}${acordosCom(x)}`;
   }
   const g = d.guerras.find((w) => w.cod === x.cod);
   return `${st}<div class="grade g3 peq"><div><div class="rotulo">PIB</div><b>US$ ${nf(x.pib, 2)} tri</b></div><div><div class="rotulo">Militar</div><b>${x.militar}</b></div><div><div class="rotulo">Seu poder</div><b>${nf(d.militar, 0)}</b></div></div>
     ${g ? `<div class="guerra-card mt"><b class="ruim">${icone('mira', 'p')} Em guerra · ${g.turnos} trimestres</b>${UIc.barra('Front', (g.progresso + 100) / 2, g.progresso >= 0 ? 'var(--verde)' : 'var(--vermelho)', nf(g.progresso, 0))}</div>` : ''}
-    <div class="grupo-btn mt">${bA('Missão (1)', 'acao_diplomatica', { acao: 'melhorar', alvo: x.cod }, 'btn-mini', '', 'aperto')}${bA('Acordo comercial (2)', 'acao_diplomatica', { acao: 'tratado', alvo: x.cod }, 'btn-mini', '', 'link')}${bA('Aliança (2)', 'acao_diplomatica', { acao: 'alianca', alvo: x.cod }, 'btn-mini', '', 'escudo')}
+    ${painelReuniao(x)}${acordosCom(x)}
+    <div class="rotulo mt-g">Outras ações</div><div class="grupo-btn mt">${bA('Aliança (2)', 'acao_diplomatica', { acao: 'alianca', alvo: x.cod }, 'btn-mini', '', 'escudo')}
       ${x.sancao ? bA('Retirar sanções', 'acao_diplomatica', { acao: 'retirar_sancao', alvo: x.cod }, 'btn-mini') : bA('Sancionar (1)', 'acao_diplomatica', { acao: 'sancionar', alvo: x.cod }, 'btn-mini btn-perigo', '', 'alerta')}
       ${x.guerra ? bA('Negociar paz (1)', 'acao_diplomatica', { acao: 'paz', alvo: x.cod }, 'btn-mini btn-ouro', '', 'bandeira') : bA('Declarar guerra (3)', 'acao_diplomatica', { acao: 'declarar_guerra', alvo: x.cod }, 'btn-mini btn-perigo', `data-confirmar="Declarar guerra contra ${esc(x.nome)}? O prestígio na ONU despenca e o custo é alto."`, 'mira')}</div>
-    <p class="mini fraco mt mb0">Acordo: relação ≥ 55 · Aliança: ≥ 70 · Guerra: poder militar ≥ 30. Dados econômicos aproximados.</p>`;
+    <p class="mini fraco mt mb0">Aliança: relação ≥ 70 · Guerra: poder militar ≥ 30. Dados econômicos aproximados.</p>`;
 }
+const nomeFormato = (k) => (NAC() ? CAT.diplomacia.formatos[k]?.nome : { telefonema: 'Telefonema', chanceleres: 'Reunião de secretários', cupula: 'Encontro de governadores', visita: 'Visita oficial' }[k]) || k;
+const nomeProp = (pauta, k) => CAT.diplomacia.pautas[pauta]?.propostas[k]?.nome || k;
+const efeitosProp = (pauta, k) => (CAT.diplomacia.pautas[pauta]?.propostas[k]?.efeitos || []).join(' · ');
+function bloqueioProp(x, k, p) {
+  if (p.escopos && !p.escopos.includes(S().meta.escopo)) return 'indisponível neste modo';
+  if (p.min_pib && NAC() && x.pib < p.min_pib) return 'economia pequena demais para isso';
+  if ((S().diplomacia.acordos || []).some((a) => a.cod === x.cod && a.proposta === k)) return 'já está em vigor';
+  return '';
+}
+/* mesma fórmula do servidor (engine/diplomacia.py: chance) */
+function chanceReu(x, r) {
+  const base = D().diplo_base?.[x.cod], dc = CAT.diplomacia;
+  if (base === undefined || base <= -1) return 0;
+  return clampN(base + (dc.interesse[x.bloco]?.[r.pauta] || 0) + dc.formatos[r.formato].bonus + dc.concessoes[r.concessao].bonus - dc.pautas[r.pauta].propostas[r.proposta].dif, 0.03, 0.95);
+}
+function painelReuniao(x) {
+  const s = S(), dc = CAT.diplomacia, r = UI.reu;
+  if (x.guerra) return '<div class="dossie mt">Em guerra: negocie a paz antes de qualquer reunião.</div>';
+  const props = r.pauta ? dc.pautas[r.pauta].propostas : {};
+  if (r.pauta && (!props[r.proposta] || bloqueioProp(x, r.proposta, props[r.proposta]))) r.proposta = Object.keys(props).find((k) => !bloqueioProp(x, k, props[k])) || null;
+  const f = dc.formatos[r.formato], comAcordo = !!(r.pauta && r.proposta);
+  const ja = (s.diplomacia.reunioes || []).some((m) => m.cod === x.cod && m.turno === s.meta.turno);
+  const fmt = Object.entries(dc.formatos).map(([k, v]) => `<button type="button" class="filtro ${r.formato === k ? 'ativo' : ''}" data-fn="reuSet" data-k="formato" data-v="${k}" title="${esc(v.desc)}">${esc(nomeFormato(k))} · ${v.capital}${icone('raio', 'p')}</button>`).join('');
+  const pautas = [['', 'Só aproximação'], ...Object.entries(dc.pautas).map(([k, p]) => [k, p.nome])].map(([k, t]) => `<button type="button" class="filtro ${(r.pauta || '') === k ? 'ativo' : ''}" data-fn="reuSet" data-k="pauta" data-v="${k}">${k ? icone(dc.pautas[k].ico, 'p') + ' ' : ''}${esc(t)}</button>`).join('');
+  const cards = Object.entries(props).map(([k, p]) => { const b = bloqueioProp(x, k, p); return `<button type="button" class="prop-card ${r.proposta === k ? 'sel' : ''}" data-fn="reuSet" data-k="proposta" data-v="${k}" ${b ? 'disabled' : ''}><b>${esc(p.nome)}</b><small>${esc(p.efeitos.join(' · '))}</small>${b ? `<small class="alerta">${esc(b)}</small>` : ''}</button>`; }).join('');
+  const conc = comAcordo ? Object.entries(dc.concessoes).map(([k, c]) => `<button type="button" class="filtro ${r.concessao === k ? 'ativo' : ''}" data-fn="reuSet" data-k="concessao" data-v="${k}">${esc(c.nome)}${c.custo ? ' · ' + bi(c.custo) : ''}</button>`).join('') : '';
+  const custoBi = f.custo + (comAcordo ? dc.concessoes[r.concessao].custo : 0);
+  let res = '';
+  if (comAcordo) res = x.jogador ? `<div class="chance-box"><span class="selo ouro">${icone('usuario', 'p')} ${esc(x.jogador)}</span><span class="peq">é um jogador: ele decide se aceita.</span></div>`
+    : (() => { const c = chanceReu(x, r) * 100; return `<div class="chance-box"><span class="rotulo">Chance de aceitar</span>${UIc.medidor(c, 100, corEstado(c, 55, 30))}<b class="num">${nf(c, 0)}%</b></div>`; })();
+  const params = { alvo: x.cod, formato: r.formato, pauta: r.pauta || '', proposta: comAcordo ? r.proposta : '', concessao: r.concessao };
+  return `<div class="reuniao mt"><div class="linha entre nw"><span class="rotulo">${icone('aperto', 'p')} Reunião diplomática</span><span class="mini fraco">${f.capital} de capital${custoBi ? ' · ' + bi(custoBi) : ''}</span></div>
+    <div class="mini fraco mt">Formato</div><div class="filtros mb0">${fmt}</div><p class="mini fraco">${esc(f.desc)}</p>
+    <div class="mini fraco">Pauta</div><div class="filtros mb0">${pautas}</div>
+    ${cards ? `<div class="props mt">${cards}</div>` : ''}${conc ? `<div class="mini fraco mt">Concessões (aumentam a chance)</div><div class="filtros mb0">${conc}</div>` : ''}${res}
+    <div class="linha entre mt">${ja ? '<span class="mini alerta">Já houve reunião com este país neste trimestre.</span>' : '<span class="mini fraco">Aceito: acordo assinado. Rejeitado: relação cai um pouco.</span>'}
+      ${bA(comAcordo ? 'Convocar e propor' : 'Convocar reunião', 'reuniao_diplomatica', params, 'btn-ouro btn-mini', ja || (r.pauta && !r.proposta) ? 'disabled' : '', 'aperto')}</div></div>`;
+}
+function linhaAcordo(a) {
+  return `<div class="acordo-linha">${icone(CAT.diplomacia.pautas[a.pauta]?.ico || 'link', 'p')}<div class="flex1"><b class="peq">${esc(a.nome)}</b><div class="mini fraco">${esc(a.pais)} · desde ${a.ano} · ${esc(efeitosProp(a.pauta, a.proposta))}</div></div>
+    ${bA('Sair (1)', 'denunciar_acordo', { id: a.id }, 'btn-mini btn-fantasma', `data-confirmar="Sair do acordo '${esc(a.nome)}'? A relação com ${esc(a.pais)} piora e o prestígio cai."`)}</div>`;
+}
+const acordosCom = (x) => { const l = (S().diplomacia.acordos || []).filter((a) => a.cod === x.cod); return l.length ? `<div class="rotulo mt-g">Acordos com ${esc(x.nome)}</div>${l.map(linhaAcordo).join('')}` : ''; };
+
 function vDiplomacia() {
   const s = S(), d = s.diplomacia, ent = Object.values(d.entidades).sort((a, b) => b.rel - a.rel);
   const lista = `<div class="rolagem lista-ent" style="overflow-x:auto"><table class="tabela"><tbody>${ent.map((e) => `<tr data-fn="selecionarEnt" data-id="${e.cod}" class="${e.cod === UI.sel ? 'ativa' : ''}">
@@ -260,10 +315,28 @@ function vDiplomacia() {
       <div class="grupo-btn">${bA('Propor resolução (1)', 'acao_diplomatica', { acao: 'onu_resolucao' }, 'btn-mini')}${bA('Missão de paz (2)', 'acao_diplomatica', { acao: 'onu_missao' }, 'btn-mini')}${bA('Conselho de Segurança (3)', 'acao_diplomatica', { acao: 'onu_conselho' }, 'btn-mini btn-ouro')}</div>`)
     : UIc.painel('Governo Federal', 'palacio', `${UIc.barra('Relação com Brasília', s.federal.relacao, corEstado(s.federal.relacao, 60, 35))}<p class="mini fraco">Define o volume de repasses ao estado.</p>
       <div class="grupo-btn">${bA('Pedir repasse extra (2)', 'pedir_repasse', {}, 'btn-mini btn-ouro', '', 'moedas')}${bA('Alinhar-se a Brasília (1)', 'alinhar_federal', {}, 'btn-mini', '', 'aperto')}</div>`);
+  const dc = CAT.diplomacia, turno = s.meta.turno;
+  const recebidas = (d.propostas || []).map((p) => `<div class="proposta-card"><div class="linha entre nw"><b>${esc(p.pais)}</b><span class="selo alerta">${icone('relogio', 'p')} expira em ${Math.max(0, p.expira - turno)} trim.</span></div>
+    <div class="peq mt">${icone(dc.pautas[p.pauta].ico, 'p')} ${esc(p.nome)}</div><div class="mini fraco">${esc(efeitosProp(p.pauta, p.proposta))}</div>
+    <div class="mini ${p.contrapartida ? 'alerta' : 'fraco'}">${p.contrapartida ? esc(p.pais) + ' ' + esc(p.contrapartida.txt) + '.' : 'Sem contrapartida.'}</div>
+    <div class="grupo-btn mt">${bA('Aceitar', 'responder_proposta', { id: p.id, aceitar: true }, 'btn-mini btn-ouro', '', 'check')}${bA('Recusar', 'responder_proposta', { id: p.id, aceitar: false }, 'btn-mini', '', 'x')}</div></div>`).join('');
+  const painelRecebidas = recebidas ? UIc.painel('Propostas recebidas', 'jornal', recebidas, { sub: `Outros ${NAC() ? 'países' : 'estados'} propõem acordos: aceite ou recuse (recusar piora um pouco a relação)` }) : '';
+  const acs = d.acordos || [];
+  const painelAcordos = UIc.painel(NAC() ? 'Acordos e tratados' : 'Consórcios e acordos', 'link', acs.length ? acs.map(linhaAcordo).join('') : UIc.vazio(`Nenhum acordo ainda. Selecione um ${NAC() ? 'país' : 'estado'} e convoque uma reunião.`, 'link'), { sub: `${acs.length} em vigor` });
+  const aguard = (d.aguardando || []).map((a) => `<div class="linha entre peq" style="padding:6px 0"><span><b>${esc(d.entidades[a.cod]?.nome || a.cod)}</b> · ${esc(a.nome)}</span><span class="selo alerta">aguardando ${esc(d.entidades[a.cod]?.jogador || '')}</span></div>`).join('');
+  const log = (d.reunioes || []).slice(0, 8).map((r) => `<div class="linha entre nw peq" style="padding:6px 0;border-bottom:1px solid var(--borda)"><span class="flex1">${r.ano} T${r.tri} · <b>${esc(r.pais)}</b> · ${esc(nomeFormato(r.formato))}${r.proposta ? ' — ' + esc(nomeProp(r.pauta, r.proposta)) : ''}${r.aceitos ? `<div class="mini fraco">Aderiram: ${esc(r.aceitos.join(', ') || '—')}</div>` : ''}</span>
+    <span class="selo ${r.aceito === true ? 'bom' : r.aceito === false ? 'ruim' : ''}">${r.aceito === true ? 'acordo' : r.aceito === false ? 'rejeitado' : r.proposta ? 'aguardando' : 'conversa'}</span></div>`).join('');
+  const painelLog = log || aguard ? UIc.painel('Reuniões recentes', 'calendario', aguard + log) : '';
+  const blocos = [...new Set(Object.values(d.entidades).map((e) => e.bloco))].filter((b) => Object.values(d.entidades).filter((e) => e.bloco === b).length >= 2);
+  const opcoesProp = Object.entries(dc.pautas).map(([k, pa]) => `<optgroup label="${esc(pa.nome)}">${Object.entries(pa.propostas).filter(([, pp]) => !pp.escopos || pp.escopos.includes(s.meta.escopo)).map(([pk, pp]) => `<option value="${k}:${pk}">${esc(pp.nome)}</option>`).join('')}</optgroup>`).join('');
+  const painelCupula = NAC() ? UIc.painel('Cúpula de bloco', 'pessoas', `<p class="mini fraco">Reúna os membros de um bloco; cada país aceita ou rejeita a proposta. Custa 3 de capital e R$ 10 bi.</p>
+    <div class="grade g2"><label class="campo">Bloco<select id="cup-bloco">${blocos.map((b) => `<option>${esc(b)}</option>`).join('')}</select></label><label class="campo">Proposta<select id="cup-prop">${opcoesProp}</select></label></div>
+    <div class="linha mt" style="justify-content:flex-end">${bF('Convocar cúpula (3)', 'convocarCupula', 'btn-ouro btn-mini', PODE() ? '' : 'disabled', 'pessoas')}</div>`) : '';
   const guerras = d.guerras.length ? UIc.painel('Conflitos', 'mira', d.guerras.map((g) => `<div class="guerra-card"><b>${esc(d.entidades[g.cod].nome)}</b> · ${g.turnos} trimestres${UIc.barra('Front', (g.progresso + 100) / 2, g.progresso >= 0 ? 'var(--verde)' : 'var(--vermelho)', nf(g.progresso, 0))}</div>`).join('')) : '';
   return `<div class="layout-diplo"><div class="coluna"><section class="vidro mapa-painel"><div class="painel-cab"><span class="ico-caixa">${icone(NAC() ? 'globo' : 'mapa')}</span><div class="flex1"><h2>${NAC() ? 'Relações internacionais' : 'Relações federativas'}</h2>
-      <div class="mini fraco">${NAC() ? '194 países · parceiros principais coloridos' : '26 estados e DF'}</div></div></div><div id="mapa-diplo"></div><div class="legenda-rel"><span>hostil</span><i></i><span>aliado</span></div></section>${guerras}</div>
-    <div class="coluna"><section class="vidro max painel" id="painel-ent">${painelEntidade()}</section>${extra}${UIc.painel(NAC() ? 'Parceiros' : 'Estados', 'bandeira', lista)}</div></div>`;
+      <div class="mini fraco">${NAC() ? '194 países · parceiros principais coloridos' : '26 estados e DF'}</div></div></div><div id="mapa-diplo"></div><div class="legenda-rel"><span>hostil</span><i></i><span>aliado</span></div></section>${guerras}
+    ${painelAcordos}${painelLog}</div>
+    <div class="coluna"><section class="vidro max painel" id="painel-ent">${painelEntidade()}</section>${painelRecebidas}${extra}${painelCupula}${UIc.painel(NAC() ? 'Parceiros' : 'Estados', 'bandeira', lista)}</div></div>`;
 }
 
 /* ---------- POPULAÇÃO ---------- */
@@ -286,7 +359,7 @@ function vEstatisticas() {
   const s = S(), h = s.historico;
   const g = (t, k, cor, f) => `<section class="vidro painel"><div class="rotulo">${t}</div>${graficoArea(h, k, cor, f)}</section>`;
   const p = (v) => pct(v, 1), n0 = (v) => nf(v, 0);
-  const el = s.eleicoes.map((e) => `<tr><td>${e.ano}</td><td>${{ inicial: 'Eleição', reeleicao: 'Reeleição', sucessor: 'Sucessão' }[e.tipo]}</td>
+  const el = s.eleicoes.map((e) => `<tr><td>${e.ano}</td><td>${e.historica ? 'Eleição (2022)' : { inicial: 'Eleição', reeleicao: 'Reeleição', sucessor: 'Sucessão' }[e.tipo]}</td>
     <td>${e.turno1.slice(0, 3).map((c) => `${selo(c.partido)} ${nf(c.pct, 0)}%`).join(' &nbsp; ')}${e.turno2 ? `<div class="mini fraco mt">2º turno: ${e.turno2.map((c) => `${esc(c.partido)} ${nf(c.pct, 0)}%`).join(' × ')}</div>` : ''}</td>
     <td><span class="selo ${e.venceu ? 'bom' : 'ruim'}">${e.venceu ? 'vitória' : 'derrota'}</span></td></tr>`).join('');
   return `<div class="grade g3">${g('Popularidade', 'popularidade', 'var(--ouro)', p)}${g('Crescimento do PIB', 'crescimento', 'var(--verde)', p)}${g('Inflação', 'inflacao', 'var(--vermelho)', p)}
@@ -295,33 +368,59 @@ function vEstatisticas() {
     <div class="mt">${UIc.painel('Histórico eleitoral', 'urna', el ? `<div style="overflow-x:auto"><table class="tabela"><thead><tr><th>Ano</th><th>Disputa</th><th>Resultado</th><th></th></tr></thead><tbody>${el}</tbody></table></div>` : UIc.vazio('Nenhuma eleição disputada ainda.', 'urna'))}</div>`;
 }
 
-/* ---------- CONFIGURAÇÕES ---------- */
-function vConfig() {
-  const s = S(), eu = G.eu, t = Tema.get();
-  const link = location.origin + '/jogo/' + G.codigo;
-  const jogadores = G.jogadores.map((j) => `<div class="jogador-linha"><span class="inicial">${esc(iniciais(j.nome))}</span><div class="flex1"><b class="peq">${esc(j.nome)}</b><div class="mini fraco">${esc(CAT.papeis[j.papel] || j.papel)}${j.extra.pais ? ' · ' + esc(j.extra.pais) : ''}</div></div>${j.anfitriao ? '<span class="selo ouro">anfitrião</span>' : ''}</div>`).join('');
-  const chat = G.mensagens.map((m) => `<div class="msg"><b>${esc(m.autor)}</b>${esc(m.texto)}</div>`).join('') || UIc.vazio('Sem mensagens.', 'chat');
+/* ---------- SALA (MULTIPLAYER) ---------- */
+function pendenciasSala() {
+  const eu = G.eu, s = S();
+  if (eu.anfitriao) return G.pedidos.filter((p) => p.status === 'pendente').length;
+  if (eu.papel === 'lider') return (s.diplomacia.aguardando || []).filter((a) => a.cod === eu.extra.pais).length;
+  return 0;
+}
+function vSala() {
+  const s = S(), eu = G.eu, link = location.origin + '/jogo/' + G.codigo, dc = CAT.diplomacia;
+  const online = G.jogadores.filter((j) => j.online).length;
+  const jogadores = G.jogadores.map((j) => `<div class="jogador-linha"><span class="inicial">${esc(iniciais(j.nome))}<i class="ponto-on ${j.online ? 'on' : ''}" title="${j.online ? 'online' : 'offline'}"></i></span><div class="flex1"><b class="peq">${esc(j.nome)}</b>${j.nome === eu.nome && j.papel === eu.papel ? ' <span class="selo">você</span>' : ''}<div class="mini fraco">${esc(CAT.papeis[j.papel] || j.papel)}${j.extra.pais ? ' · ' + esc(s.diplomacia.entidades[j.extra.pais]?.nome || j.extra.pais) : ''} · ${j.online ? '<span class="bom">online</span>' : 'offline'}</div></div>${j.anfitriao ? '<span class="selo ouro">anfitrião</span>' : ''}</div>`).join('');
+  const chat = G.mensagens.map((m) => `<div class="msg"><b>${esc(m.autor)}</b>${esc(m.texto)}</div>`).join('') || UIc.vazio('Sem mensagens. Diga olá!', 'chat');
+  const opcoesProp = Object.entries(dc.pautas).map(([k, pa]) => `<optgroup label="${esc(pa.nome)}">${Object.entries(pa.propostas).filter(([, pp]) => !pp.escopos || pp.escopos.includes(s.meta.escopo)).map(([pk, pp]) => `<option value="${k}:${pk}">${esc(pp.nome)}</option>`).join('')}</optgroup>`).join('');
   const campo = {
     governador: `<label class="campo">Valor (R$ bi)<input type="number" id="ped-valor" min="1" max="100" value="10"></label>${bF('Pedir repasse', 'enviarPedido', 'btn-ouro', 'data-tipo="repasse"', 'moedas')}`,
     parlamentar: `<label class="campo">Emendas (R$ bi)<input type="number" id="ped-valor" min="1" max="100" value="10"></label>${bF('Oferecer apoio por emendas', 'enviarPedido', 'btn-ouro', 'data-tipo="apoio"', 'aperto')}`,
     ministro: `<label class="campo">Área<select id="ped-setor">${CAT.setores.map((k) => `<option value="${k}">${CAT.rotulo_setor[k]}</option>`).join('')}</select></label>${bF('Pedir mais orçamento', 'enviarPedido', 'btn-ouro', 'data-tipo="orcamento"', 'grafico')}`,
-    lider: `<label class="campo">Proposta<select id="ped-acao"><option value="tratado">Acordo comercial</option><option value="alianca">Aliança</option><option value="melhorar">Aproximação</option><option value="sancionar">Sanção contra o Brasil</option></select></label>${bF('Enviar proposta', 'enviarPedido', 'btn-ouro', 'data-tipo="acordo"', 'globo')}`,
+    lider: `<label class="campo">Propor acordo (reunião com o anfitrião)<select id="ped-prop">${opcoesProp}</select></label>${bF('Propor acordo', 'enviarPedido', 'btn-ouro', 'data-tipo="reuniao"', 'aperto')}
+      <div class="sep"></div><label class="campo">Outras ações<select id="ped-acao"><option value="melhorar">Aproximação</option><option value="alianca">Aliança militar</option><option value="sancionar">Pedir sanções ao seu país</option></select></label>${bF('Enviar', 'enviarPedido', '', 'data-tipo="acordo"', 'globo')}`,
   }[eu.papel];
-  const pedidos = G.pedidos.map((p) => `<div class="jogador-linha"><div class="flex1 peq"><b>${esc(p.autor)}</b> <span class="fraco">(${esc(p.papel)})</span><div class="mini">${esc(p.tipo)} ${p.payload.valor ? 'R$ ' + p.payload.valor + ' bi' : esc(p.payload.setor || p.payload.acao || '')}</div></div>
-    ${p.status === 'pendente' ? (eu.anfitriao ? `${bF('Aprovar', 'decidirPedido', 'btn-mini btn-ouro', `data-id="${p.id}" data-ok="1"`)} ${bF('Negar', 'decidirPedido', 'btn-mini', `data-id="${p.id}" data-ok="0"`)}` : '<span class="selo alerta">pendente</span>') : `<span class="selo ${p.status === 'aprovado' ? 'bom' : 'ruim'}">${p.status}</span>`}</div>`).join('') || UIc.vazio('Sem pedidos.', 'pasta');
+  const textoPedido = (p) => p.tipo === 'reuniao' ? `acordo: ${esc(nomeProp(p.payload.pauta, p.payload.proposta))} (${esc(s.diplomacia.entidades[p.payload.pais]?.nome || '')})`
+    : `${esc(p.tipo)} ${p.payload.valor ? 'R$ ' + p.payload.valor + ' bi' : esc(p.payload.setor || p.payload.acao || '')}`;
+  const pedidos = G.pedidos.map((p) => `<div class="jogador-linha"><div class="flex1 peq"><b>${esc(p.autor)}</b> <span class="fraco">(${esc(CAT.papeis[p.papel] || p.papel)})</span><div class="mini">${textoPedido(p)}</div></div>
+    ${p.status === 'pendente' ? (eu.anfitriao && !s.meta.encerrado ? `${bF('Aprovar', 'decidirPedido', 'btn-mini btn-ouro', `data-id="${p.id}" data-ok="1"`)} ${bF('Negar', 'decidirPedido', 'btn-mini', `data-id="${p.id}" data-ok="0"`)}` : '<span class="selo alerta">pendente</span>') : `<span class="selo ${p.status === 'aprovado' ? 'bom' : 'ruim'}">${p.status}</span>`}</div>`).join('') || UIc.vazio(eu.anfitriao ? 'Nenhum pedido. Os outros jogadores enviam pedidos por aqui.' : 'Você ainda não enviou pedidos.', 'pasta');
+  const meus = eu.papel === 'lider' ? (s.diplomacia.aguardando || []).filter((a) => a.cod === eu.extra.pais) : [];
+  const propostas = meus.length ? UIc.painel(`Propostas do ${cargo()} para você`, 'aperto', meus.map((a) => `<div class="proposta-card"><b>${esc(a.nome)}</b><div class="mini fraco">${esc(nomeFormato(a.formato))} · ${esc(efeitosProp(a.pauta, a.proposta))}</div>
+    <div class="grupo-btn mt">${bF('Aceitar', 'responderLider', 'btn-mini btn-ouro', `data-id="${a.id}" data-ok="1"`, 'check')}${bF('Rejeitar', 'responderLider', 'btn-mini', `data-id="${a.id}" data-ok="0"`, 'x')}</div></div>`).join(''), { sub: 'Você representa seu país: aceite ou rejeite' }) : '';
+  const papelTxt = { governador: 'Peça repasses de verba ao governo.', ministro: 'Peça mais orçamento para sua área.', parlamentar: 'Ofereça apoio no Congresso em troca de emendas.', lider: 'Proponha acordos e responda às propostas do anfitrião.' }[eu.papel];
   return `<div class="grade g2"><div class="coluna">
-    ${UIc.painel('Aparência', 'sol', `<div class="grupo-btn">${[['light', 'sol', 'Claro'], ['dark', 'lua', 'Escuro'], ['auto', 'ajustes', 'Automático']].map(([k, ic, n]) => `<button type="button" class="btn ${t === k ? 'btn-ouro' : ''}" data-fn="mudarTema" data-tema="${k}">${icone(ic, 'p')}${n}</button>`).join('')}</div>`)}
-    ${UIc.painel('Sua partida', 'bandeira', `<div class="linha nw">${avJogador()}<div><b class="titulo-display" style="font-size:1.2rem">${esc(s.jogador.nome)}</b><div class="peq suave">${s.jogador.idade + Math.floor(s.meta.turno / 4)} anos · ${esc(s.jogador.partido_nome)} · ${esc(CAT.ideologias[s.jogador.ideologia].nome)}</div>
-      <div class="mini fraco">${s.meta.modo === 'presidente' ? 'Presidência da República' : 'Governo de ' + esc(s.meta.rotulo)} · RUN ${esc(s.meta.duracao)} · mandato ${s.meta.mandato}/${s.meta.max_mandatos} · antecessor real: ${esc(s.meta.antecessor || '—')}</div></div></div>
-      <div class="grupo-btn mt">${s.meta.encerrado ? bF('Ver relatório final', 'verRelatorio', 'btn-ouro', '', 'trofeu') : bA('Encerrar partida', 'encerrar_run', {}, 'btn-perigo', 'data-confirmar="Encerrar esta partida agora e ver o relatório?"', 'sair')}<a class="btn" href="/">${icone('palacio', 'p')}Menu inicial</a></div>`)}
-    ${UIc.painel('Multiplayer', 'link', `<div class="linha entre"><div><div class="rotulo">Código da partida</div><div class="codigo-grande">${G.codigo}</div></div>${bF('Copiar link', 'copiarLink', 'btn-mini', `data-link="${esc(link)}"`, 'copiar')}</div><div class="sep"></div>${jogadores}`)}</div>
-    <div class="coluna">${UIc.painel('Pedidos', 'pasta', pedidos + (campo ? `<div class="coluna mt" style="gap:10px">${campo}</div>` : ''))}
-    ${UIc.painel('Chat', 'chat', `<div class="chat rolagem" id="chat">${chat}</div><div class="linha nw mt"><input type="text" id="msg" maxlength="300" placeholder="Escreva uma mensagem…">${bF('', 'enviarMsg', 'btn-ouro btn-icone', 'aria-label="Enviar"', 'seta')}</div>`)}</div></div>`;
+    ${UIc.painel('Sala multiplayer', 'link', `<div class="linha entre"><div><div class="rotulo">Código da sala</div><div class="codigo-grande">${G.codigo}</div></div>${bF('Copiar convite', 'copiarLink', 'btn-ouro btn-mini', `data-link="${esc(link)}"`, 'copiar')}</div>
+      <p class="mini fraco mt">Envie o código ou o link: os amigos entram pelo menu <b>Multiplayer</b> escolhendo um papel (governador, ministro, parlamentar ou líder estrangeiro). A sala atualiza sozinha a cada poucos segundos.</p>
+      <div class="sep"></div><div class="linha entre"><span class="rotulo">Jogadores</span><span class="selo ${online > 1 ? 'bom' : ''}">${online} online de ${G.jogadores.length}</span></div>${jogadores}`)}
+    ${propostas}
+    ${UIc.painel('Pedidos', 'pasta', (eu.anfitriao ? '<p class="mini fraco">Você governa: aprove ou negue o que os outros jogadores pedem.</p>' : `<p class="mini fraco">${esc(papelTxt || '')} O anfitrião aprova ou nega.</p>`) + pedidos + (campo && !s.meta.encerrado ? `<div class="coluna mt" style="gap:10px">${campo}</div>` : ''))}</div>
+    <div class="coluna">${UIc.painel('Chat', 'chat', `<div class="chat rolagem" id="chat">${chat}</div><div class="linha nw mt"><input type="text" id="msg" maxlength="300" placeholder="Escreva uma mensagem…" autocomplete="off">${bF('', 'enviarMsg', 'btn-ouro btn-icone', 'aria-label="Enviar"', 'seta')}</div>`)}</div></div>`;
 }
 
-const VIEWS = { governo: vGoverno, economia: vEconomia, justica: vJustica, congresso: vCongresso, diplomacia: vDiplomacia, populacao: vPopulacao, estatisticas: vEstatisticas, config: vConfig };
+/* ---------- CONFIGURAÇÕES ---------- */
+function vConfig() {
+  const s = S(), t = Tema.get(), m = s.meta;
+  const origem = m.antecessor ? `antecessor real: ${esc(m.antecessor)}` : '';
+  return `<div class="grade g2"><div class="coluna">
+    ${UIc.painel('Aparência', 'sol', `<div class="grupo-btn">${[['light', 'sol', 'Claro'], ['dark', 'lua', 'Escuro'], ['auto', 'ajustes', 'Automático']].map(([k, ic, n]) => `<button type="button" class="btn ${t === k ? 'btn-ouro' : ''}" data-fn="mudarTema" data-tema="${k}">${icone(ic, 'p')}${n}</button>`).join('')}</div>`)}
+    ${UIc.painel('Tutorial', 'info', `<p class="peq suave">Um passeio guiado pelas abas: governar, criar leis, administrar o país, diplomacia e eleições.</p>${bF('Iniciar tutorial', 'abrirTutorial', 'btn-ouro', '', 'play')}`)}</div>
+    <div class="coluna">${UIc.painel('Sua partida', 'bandeira', `<div class="linha nw">${avJogador()}<div><b class="titulo-display" style="font-size:1.2rem">${esc(s.jogador.nome)}</b><div class="peq suave">${s.jogador.idade + Math.floor(m.turno / 4)} anos · ${esc(s.jogador.partido_nome)} · ${esc(CAT.ideologias[s.jogador.ideologia].nome)}</div>
+      <div class="mini fraco">${m.modo === 'presidente' ? 'Presidência da República' : 'Governo de ' + esc(m.rotulo)} · RUN ${esc(m.duracao)} · mandato ${m.mandato}/${m.max_mandatos}${origem ? ' · ' + origem : ''}</div>
+      ${m.substitui ? `<div class="mini fraco">Cenário alternativo: você venceu a eleição de 2022 no lugar de ${esc(m.substitui)}.</div>` : ''}</div></div>
+      <div class="grupo-btn mt">${m.encerrado ? bF('Ver relatório final', 'verRelatorio', 'btn-ouro', '', 'trofeu') : bA('Encerrar partida', 'encerrar_run', {}, 'btn-perigo', 'data-confirmar="Encerrar esta partida agora e ver o relatório?"', 'sair')}<a class="btn" href="/">${icone('palacio', 'p')}Menu inicial</a></div>`)}</div></div>`;
+}
+
+const VIEWS = { governo: vGoverno, economia: vEconomia, justica: vJustica, congresso: vCongresso, diplomacia: vDiplomacia, populacao: vPopulacao, estatisticas: vEstatisticas, sala: vSala, config: vConfig };
 const ABAS = [['governo', 'palacio', 'Governo'], ['economia', 'economia', 'Economia'], ['justica', 'justica', 'Justiça'], ['congresso', 'congresso', 'Congresso'],
-  ['diplomacia', 'globo', 'Diplomacia'], ['populacao', 'pessoas', 'População'], ['estatisticas', 'grafico', 'Estatísticas'], ['config', 'ajustes', 'Ajustes']];
+  ['diplomacia', 'globo', 'Diplomacia'], ['populacao', 'pessoas', 'População'], ['estatisticas', 'grafico', 'Estatísticas'], ['sala', 'link', 'Sala'], ['config', 'ajustes', 'Ajustes']];
 const POS_RENDER = {
   governo: () => montarMapa('mapa-gov', () => { $('#sel-gov').innerHTML = painelSelecaoMapa(); }),
   diplomacia: () => montarMapa('mapa-diplo', () => { $('#painel-ent').innerHTML = painelEntidade(); $$('.lista-ent tr').forEach((r) => r.classList.toggle('ativa', r.dataset.id === UI.sel)); }),

@@ -9,12 +9,16 @@ PAPEIS = {
     "parlamentar": "Parlamentar",
     "lider": "Líder de outro país",
 }
-TIPOS_POR_PAPEL = {"governador": {"repasse"}, "ministro": {"orcamento"}, "parlamentar": {"apoio"}, "lider": {"acordo"}}
+TIPOS_POR_PAPEL = {"governador": {"repasse"}, "ministro": {"orcamento"}, "parlamentar": {"apoio"}, "lider": {"acordo", "reuniao"}}
 
 
 def validar(papel, tipo, payload):
     if tipo not in TIPOS_POR_PAPEL.get(papel, set()):
         return "Seu papel não pode enviar esse tipo de pedido."
+    if tipo == "reuniao":
+        pauta = diplomacia.PAUTAS.get(payload.get("pauta"))
+        if not pauta or payload.get("proposta") not in pauta["propostas"]:
+            return "Escolha uma pauta e uma proposta de acordo."
     if tipo in ("repasse", "apoio"):
         try:
             v = float(payload.get("valor"))
@@ -55,6 +59,17 @@ def aplicar(estado, pedido, rng, aprovado):
             msg = f"Orçamento de {setor} ampliado a pedido de {autor}."
         else:
             msg = f"Pedido de orçamento de {autor} negado."
+    elif tipo == "reuniao":
+        cod = pl.get("pais")
+        ent = estado["diplomacia"]["entidades"].get(cod)
+        nome = diplomacia.PAUTAS[pl["pauta"]]["propostas"][pl["proposta"]]["nome"]
+        if aprovado and ent:
+            ok, msg = diplomacia.acordo_direto(estado, cod, pl["pauta"], pl["proposta"])
+            msg = f"Reunião com {autor} ({ent['nome']}): {msg}" if ok else f"Proposta de {autor}: {msg}"
+        else:
+            if ent:
+                ent["rel"] = round(clamp(ent["rel"] - 3, 0, 100), 2)
+            msg = f"Proposta de {autor} ('{nome}') rejeitada."
     else:  # acordo
         cod = pl.get("pais")
         ent = estado["diplomacia"]["entidades"].get(cod)
