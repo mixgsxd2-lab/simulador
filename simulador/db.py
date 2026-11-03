@@ -24,6 +24,10 @@ CREATE TABLE IF NOT EXISTS pedidos (
     payload TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pendente', ts REAL NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_pedidos_jogo ON pedidos(jogo);
+CREATE TABLE IF NOT EXISTS governos (
+    jogador INTEGER PRIMARY KEY, jogo TEXT NOT NULL, uf TEXT NOT NULL, estado TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_governos_jogo ON governos(jogo);
 CREATE TABLE IF NOT EXISTS relatorios (
     id INTEGER PRIMARY KEY AUTOINCREMENT, jogo TEXT NOT NULL UNIQUE, nome TEXT NOT NULL, modo TEXT NOT NULL, duracao TEXT NOT NULL,
     resultado TEXT NOT NULL, pontuacao REAL NOT NULL, dados TEXT NOT NULL, ts REAL NOT NULL
@@ -56,6 +60,9 @@ def fechar_db(_=None):
 
 MIGRACOES = [
     "ALTER TABLE jogadores ADD COLUMN visto REAL NOT NULL DEFAULT 0",  # presença (online) no multiplayer
+    "ALTER TABLE jogadores ADD COLUMN pronto INTEGER NOT NULL DEFAULT 0",  # pronto para avançar o trimestre
+    "ALTER TABLE pedidos ADD COLUMN destino INTEGER",  # NULL = anfitrião; senão, id do jogador que decide
+    "ALTER TABLE pedidos ADD COLUMN autor_id INTEGER",
 ]
 
 
@@ -105,3 +112,19 @@ def salvar_estado(db, codigo, estado):
 def salvar_relatorio(db, codigo, nome, modo, duracao, rel):
     db.execute("INSERT OR REPLACE INTO relatorios(jogo,nome,modo,duracao,resultado,pontuacao,dados,ts) VALUES (?,?,?,?,?,?,?,?)",
                (codigo, nome, modo, duracao, rel["resultado"], rel["pontuacao"], json.dumps(rel, ensure_ascii=False), time.time()))
+
+
+# ---------- governos estaduais (multiplayer: cada governador joga a própria partida) ----------
+def carregar_governos(db, codigo):
+    """{id do jogador: estado da partida do governador}"""
+    return {r["jogador"]: json.loads(r["estado"]) for r in db.execute("SELECT * FROM governos WHERE jogo=?", (codigo,))}
+
+
+def salvar_governo(db, codigo, jogador_id, estado):
+    db.execute("INSERT OR REPLACE INTO governos(jogador,jogo,uf,estado) VALUES (?,?,?,?)",
+               (jogador_id, codigo, estado["meta"]["uf"], json.dumps(estado, ensure_ascii=False)))
+
+
+def tocar(db, codigo):
+    """Marca a sala como alterada (a sincronização dos clientes usa a versão)."""
+    db.execute("UPDATE jogos SET versao=versao+1, atualizado=? WHERE codigo=?", (time.time(), codigo))

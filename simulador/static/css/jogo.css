@@ -186,3 +186,11 @@
 @media (max-width: 760px) {
   .tut-cartao { left: 12px !important; right: 12px; bottom: 92px; top: auto !important; width: auto !important; transform: none !important; }
 }
+
+/* ---------- multiplayer: pronto, governadores ---------- */
+.btn-turno .contagem { margin-left: 6px; padding: 1px 8px; border-radius: 999px; background: rgba(0, 0, 0, .18); font-size: .78rem; }
+.btn-turno.pronto-on { background: color-mix(in srgb, var(--verde) 22%, var(--vidro-2)); color: var(--verde); border-color: color-mix(in srgb, var(--verde) 45%, transparent); }
+.pronto-box { margin-top: 12px; padding: 12px; border-radius: 14px; background: var(--vidro-2); display: grid; gap: 8px; }
+.gov-lista { display: grid; gap: 12px; }
+.gov-card { padding: 14px; border-radius: 16px; border: 1px solid var(--borda); background: var(--vidro); }
+.gov-acoes { display: grid; grid-template-columns: 110px 1fr; gap: 10px; margin-top: 10px; }

@@ -237,3 +237,13 @@ const Retratos = {
   },
 };
 const iniciais = (n) => String(n || '?').split(/\s+/).filter((x) => x.length > 2 || /^[A-ZÁÉÍÓÚ]/.test(x)).slice(0, 2).map((x) => x[0]).join('').toUpperCase();
+
+/* Campos para entrar numa sala como governador: estado (os já ocupados ficam de fora), partido e ideologia. */
+function camposGovernador(resumo) {
+  if (resumo && resumo.modo !== 'presidente') return '<p class="mini fraco">Nesta sala o anfitrião é governador: entre como secretário, deputado ou líder.</p>';
+  const livres = CAT.estados.filter((e) => !(resumo?.ufs_ocupadas || []).includes(e.uf)).sort((a, b) => a.nome.localeCompare(b.nome));
+  return `<div class="grade g3" style="gap:10px"><label class="campo">Estado<select id="j-uf">${livres.map((e) => `<option value="${e.uf}">${esc(e.nome)}</option>`).join('')}</select></label>
+    <label class="campo">Partido<select id="j-partido">${CAT.partidos.map((p) => `<option value="${esc(p.sigla)}">${esc(p.sigla)} — ${p.numero}</option>`).join('')}</select></label>
+    <label class="campo">Ideologia<select id="j-ideo">${Object.entries(CAT.ideologias).map(([k, i]) => `<option value="${k}" ${k === 'centrista' ? 'selected' : ''}>${esc(i.nome)}</option>`).join('')}</select></label></div>
+    <p class="mini fraco mb0">Você governa o estado com orçamento, Assembleia, leis e eleição próprios, e negocia com o presidente e os outros governadores.</p>`;
+}

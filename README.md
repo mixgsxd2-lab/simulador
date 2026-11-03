@@ -63,7 +63,7 @@ simulador/
     data/mundo.json, brasil.json   mapas pré-projetados (gerados por tools/gerar_mapas.py)
 tools/gerar_mapas.py           gera os mapas a partir dos dados brutos
 tests/simular.py               bot que joga RUNS completas (valida o motor)
-tests/multiplayer.py           fluxo multiplayer pela API (sala, pedidos, acordos, chat)
+tests/multiplayer.py           fluxo multiplayer pela API (governadores, pronto, pedidos, acordos, chat)
 ```
 
 ## Regenerar os mapas
@@ -87,7 +87,8 @@ python tools/gerar_mapas.py world50.json br.json
 - **Diplomacia**: reuniões em quatro formatos (telefonema, chanceleres, cúpula presidencial, visita de Estado) com pautas de economia, comércio, segurança e meio ambiente. Cada proposta mostra a chance de aceite (relação, interesse do bloco, prestígio, ministro e concessões). Acordos geram efeitos a cada trimestre; outros países enviam propostas que você aceita ou recusa; há cúpulas de blocos (Mercosul, BRICS, UE…).
 - **Tutorial**: abre na primeira partida e pode ser revisto pelo botão Tutorial; o menu tem a tela **Como jogar**.
 - Mandato de 16 trimestres, no máximo 2 consecutivos. RUN **curta** (1 mandato), **média** (2) ou **longa** (2 + eleição do sucessor).
-- **Multiplayer**: o anfitrião governa; os outros entram pelo código e enviam pedidos que o anfitrião aprova ou nega. A aba **Sala** mostra quem está online, os pedidos e o chat; a tela se sincroniza sozinha a cada 3 s (`/api/jogos/<código>/sinal`). Líderes estrangeiros propõem acordos e aceitam ou rejeitam as propostas do anfitrião.
+- **Multiplayer**: quem cria a sala é o **presidente**. Quem entra como **governador** escolhe um estado, partido e ideologia e joga a própria partida estadual (orçamento, Assembleia, leis, eventos e eleição), com a economia federal ligada à do presidente. Presidente e governadores interagem o tempo todo: o presidente envia verbas, propõe convênios e pede apoio político; os governadores pedem repasses, programas federais e Força Nacional, oferecem apoio e fecham consórcios entre si (o outro jogador aceita ou recusa). Também dá para entrar como ministro, parlamentar ou líder de outro país.
+- **Pronto**: o trimestre só avança quando **todos os jogadores online** clicam em "Estou pronto" (sozinho, o botão avança na hora). Quem fica offline deixa de bloquear; o presidente pode forçar o avanço. A aba **Sala** mostra quem está online e pronto, os pedidos e o chat; a tela se sincroniza a cada 3 s (`/api/jogos/<código>/sinal`).
 
 ## Expandir
 

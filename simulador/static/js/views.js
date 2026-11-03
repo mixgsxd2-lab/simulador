@@ -4,7 +4,7 @@ const UI = { sel: null, nomeSel: '', destaque: null, catLei: 'todas', vista: {},
 const S = () => G.estado;
 const D = () => G.derivados;
 const NAC = () => G.estado.meta.escopo === 'nacional';
-const PODE = () => G.eu.anfitriao && !G.estado.meta.encerrado;
+const PODE = () => G.eu.governa && !G.estado.meta.encerrado;  // presidente (anfitrião) ou governador com estado próprio
 const cargo = () => (NAC() ? 'Presidente' : 'Governador');
 const rotuloPasta = (p) => CAT.pastas[p][S().meta.escopo] || CAT.pastas[p].nacional;
 const ICO_SETOR = { saude: 'coracao', educacao: 'capelo', seguranca: 'escudo', infraestrutura: 'predio', social: 'pessoas', meio_ambiente: 'folha', defesa: 'escudo' };
@@ -15,7 +15,12 @@ function bA(txt, tipo, params, cls = '', extra = '', ico = '') {
   return `<button type="button" class="btn ${cls}" data-a="${tipo}" data-p='${esc(JSON.stringify(params || {}))}' ${PODE() ? '' : 'disabled'} ${extra}>${ico ? icone(ico, 'p') : ''}${txt}</button>`;
 }
 const bF = (txt, fn, cls = '', extra = '', ico = '') => `<button type="button" class="btn ${cls}" data-fn="${fn}" ${extra}>${ico ? icone(ico, 'p') : ''}${txt}</button>`;
-const apJogador = () => { const s = S(); return { ...s.jogador.aparencia, ...(s.meta.modo === 'presidente' && s.meta.mandato > 0 ? { faixa: 'sim' } : {}) }; };
+const apJogador = () => {
+  const s = S(), ap = s.jogador.aparencia || {};
+  // governador que entrou numa sala não passou pelo criador de personagem: rosto sorteado pelo nome
+  const base = Object.keys(ap).length ? ap : Avatar.aleatoria(s.jogador.nome);
+  return { ...base, ...(s.meta.modo === 'presidente' && s.meta.mandato > 0 ? { faixa: 'sim' } : {}) };
+};
 const avJogador = (cls = '') => `<div class="avatar-moldura ${cls}">${Avatar.svg(apJogador(), { idade: S().jogador.idade + Math.floor(S().meta.turno / 4), partidoCor: partidoDe(S().jogador.partido).cor })}</div>`;
 const avNPC = (nome, idade = 52) => `<div class="avatar-moldura">${Avatar.svg(Avatar.aleatoria(nome), { idade })}</div>`;
 /* candidato: o jogador, um político real (foto da Wikipédia sobre o avatar) ou um personagem fictício */
@@ -313,6 +318,9 @@ function vDiplomacia() {
   const extra = NAC() ? UIc.painel('Nações Unidas', 'globo', `${UIc.barra('Prestígio', d.onu, corEstado(d.onu, 60, 35))}${UIc.barra('Poder militar', d.militar, 'var(--azul)')}
       <p class="mini fraco">${d.assento_conselho ? '🏅 O Brasil tem assento no Conselho de Segurança.' : 'Prestígio ≥ 70 permite disputar assento no Conselho de Segurança.'}</p>
       <div class="grupo-btn">${bA('Propor resolução (1)', 'acao_diplomatica', { acao: 'onu_resolucao' }, 'btn-mini')}${bA('Missão de paz (2)', 'acao_diplomatica', { acao: 'onu_missao' }, 'btn-mini')}${bA('Conselho de Segurança (3)', 'acao_diplomatica', { acao: 'onu_conselho' }, 'btn-mini btn-ouro')}</div>`)
+    : s.federal.vinculado ? UIc.painel('Governo Federal', 'palacio', `${UIc.barra('Relação com Brasília', s.federal.relacao, corEstado(s.federal.relacao, 60, 35))}
+      <p class="mini fraco">O presidente é um jogador: <b>${esc(s.federal.presidente || '')}</b> (${esc(s.federal.partido_pres || '')}). A economia do estado segue a política econômica dele: crescimento ${pct(s.federal.crescimento, 1)}, inflação ${pct(s.federal.inflacao, 1)}, Selic ${pct(s.federal.selic, 1)}.</p>
+      ${bF('Negociar com o presidente', 'irSala', 'btn-mini btn-ouro', '', 'aperto')}`)
     : UIc.painel('Governo Federal', 'palacio', `${UIc.barra('Relação com Brasília', s.federal.relacao, corEstado(s.federal.relacao, 60, 35))}<p class="mini fraco">Define o volume de repasses ao estado.</p>
       <div class="grupo-btn">${bA('Pedir repasse extra (2)', 'pedir_repasse', {}, 'btn-mini btn-ouro', '', 'moedas')}${bA('Alinhar-se a Brasília (1)', 'alinhar_federal', {}, 'btn-mini', '', 'aperto')}</div>`);
   const dc = CAT.diplomacia, turno = s.meta.turno;
@@ -370,39 +378,79 @@ function vEstatisticas() {
 
 /* ---------- SALA (MULTIPLAYER) ---------- */
 function pendenciasSala() {
-  const eu = G.eu, s = S();
-  if (eu.anfitriao) return G.pedidos.filter((p) => p.status === 'pendente').length;
-  if (eu.papel === 'lider') return (s.diplomacia.aguardando || []).filter((a) => a.cod === eu.extra.pais).length;
-  return 0;
+  return G.pedidos.filter((p) => p.status === 'pendente' && euDecido(p)).length + (G.mp.propostas_para_mim || []).length;
 }
+const opcoesSetor = (id) => `<select id="${id}">${CAT.setores.map((k) => `<option value="${k}">${CAT.rotulo_setor[k]}</option>`).join('')}</select>`;
+const avResumo = (r) => `<div class="avatar-moldura" style="width:46px;height:46px;border-radius:13px">${Avatar.svg(Object.keys(r.aparencia || {}).length ? r.aparencia : Avatar.aleatoria(r.nome), { idade: r.idade || 50, partidoCor: partidoDe(r.partido).cor })}</div>`;
+
+/* presidente: painel dos governadores jogadores, com as ações sobre cada estado */
+function painelGovernadores() {
+  const gs = G.mp.governadores;
+  if (!gs.length) return UIc.painel('Governadores', 'mapa', UIc.vazio('Nenhum governador na sala ainda. Convide amigos: eles escolhem um estado e governam por conta própria, negociando com você.', 'mapa'));
+  const pode = PODE();
+  const cartao = (g) => {
+    const jog = G.jogadores.find((j) => j.id === g.id) || {};
+    return `<div class="gov-card"><div class="linha nw">${avResumo(g)}<div class="flex1"><b>${esc(g.nome)}</b> <span class="selo">${esc(g.uf)}</span>${jog.pronto ? ' <span class="selo bom">pronto</span>' : ''}
+      <div class="mini fraco">${selo(g.partido)} ${esc(g.partido)} · ${esc(g.rotulo)} · ${jog.online ? '<span class="bom">online</span>' : 'offline'}${g.encerrado ? ' · <span class="ruim">partida encerrada</span>' : ''}</div></div></div>
+      <div class="grade g3 peq mt"><div><div class="rotulo">Aprovação</div><b>${pct(g.popularidade)}</b></div><div><div class="rotulo">Caixa</div><b>${bi(g.caixa)}</b></div><div><div class="rotulo">Relação</div><b style="color:${corEstado(g.relacao, 60, 35)}">${nf(g.relacao, 0)}</b></div></div>
+      ${UIc.barra('Relação com você', g.relacao, corEstado(g.relacao, 60, 35))}
+      ${pode && !g.encerrado ? `<div class="gov-acoes"><label class="campo">R$ bi<input type="number" id="gv-valor-${g.id}" min="1" max="100" value="10"></label><label class="campo">Área${opcoesSetor(`gv-setor-${g.id}`)}</label></div>
+      <div class="grupo-btn mt">${bF('Enviar verba', 'acaoGov', 'btn-mini btn-ouro', `data-id="${g.id}" data-tipo="verba" title="Transfere na hora do caixa federal para o estado"`, 'moedas')}
+        ${bF('Propor convênio', 'acaoGov', 'btn-mini', `data-id="${g.id}" data-tipo="convenio" title="Programa federal na área escolhida; o governador aceita ou recusa"`, 'aperto')}
+        ${bF('Pedir apoio político', 'acaoGov', 'btn-mini', `data-id="${g.id}" data-tipo="pede_apoio" title="Se aceitar, a bancada do estado se aproxima do governo no Congresso"`, 'congresso')}</div>` : ''}</div>`;
+  };
+  return UIc.painel('Governadores', 'mapa', `<div class="gov-lista">${gs.map(cartao).join('')}</div>
+    <p class="mini fraco mt mb0">Verba vale na hora. Convênio e pedido de apoio esperam a resposta do governador. Boa relação rende apoio no Congresso; relação ruim vira oposição.</p>`, { sub: 'Cada um governa o próprio estado' });
+}
+
+/* governador: painel da Presidência e dos colegas */
+function painelPresidencia() {
+  const s = S(), pr = G.mp.presidente, pode = PODE();
+  const colegas = G.mp.governadores.filter((g) => g.id !== G.eu.id).map((g) => `<div class="linha entre nw peq" style="padding:6px 0;border-bottom:1px solid var(--borda)"><span>${selo(g.partido)} <b>${esc(g.nome)}</b> · ${esc(g.rotulo)}</span><span class="fraco">${pct(g.popularidade)} aprovação</span></div>`).join('');
+  return UIc.painel('Presidência da República', 'palacio', `<div class="linha nw">${avResumo(pr)}<div class="flex1"><b>${esc(pr.nome)}</b><div class="mini fraco">${selo(pr.partido)} ${esc(pr.partido)} · aprovação ${pct(pr.popularidade)}</div></div></div>
+    <div class="grade g3 peq mt"><div><div class="rotulo">Crescimento</div><b>${pct(pr.crescimento, 1)}</b></div><div><div class="rotulo">Inflação</div><b>${pct(pr.inflacao, 1)}</b></div><div><div class="rotulo">Selic</div><b>${pct(pr.selic, 1)}</b></div></div>
+    ${UIc.barra('Sua relação com Brasília', s.federal.relacao, corEstado(s.federal.relacao, 60, 35))}
+    ${pode && !pr.encerrado ? `<div class="gov-acoes"><label class="campo">R$ bi<input type="number" id="pp-valor" min="1" max="100" value="10"></label><label class="campo">Área${opcoesSetor('pp-setor')}</label></div>
+    <div class="grupo-btn mt">${bF('Pedir repasse', 'pedirPresidente', 'btn-mini btn-ouro', 'data-tipo="repasse"', 'moedas')}${bF('Pedir programa federal', 'pedirPresidente', 'btn-mini', 'data-tipo="obra" title="R$ 20 bi do governo federal na área escolhida"', 'predio')}
+      ${bF('Pedir Força Nacional', 'pedirPresidente', 'btn-mini', 'data-tipo="forca_nacional"', 'escudo')}${bF('Oferecer apoio político', 'pedirPresidente', 'btn-mini', 'data-tipo="apoio_politico" title="Melhora muito a relação; a polarização no estado sobe um pouco"', 'aperto')}</div>` : ''}
+    ${colegas ? `<div class="rotulo mt-g">Outros governadores</div>${colegas}<p class="mini fraco mb0">Proponha consórcios a eles na aba Diplomacia: o outro jogador aceita ou recusa.</p>` : ''}`, { sub: 'Seu estado depende de Brasília' });
+}
+
 function vSala() {
-  const s = S(), eu = G.eu, link = location.origin + '/jogo/' + G.codigo, dc = CAT.diplomacia;
+  const s = S(), eu = G.eu, link = location.origin + '/jogo/' + G.codigo, dc = CAT.diplomacia, pr = G.mp.pronto;
   const online = G.jogadores.filter((j) => j.online).length;
-  const jogadores = G.jogadores.map((j) => `<div class="jogador-linha"><span class="inicial">${esc(iniciais(j.nome))}<i class="ponto-on ${j.online ? 'on' : ''}" title="${j.online ? 'online' : 'offline'}"></i></span><div class="flex1"><b class="peq">${esc(j.nome)}</b>${j.nome === eu.nome && j.papel === eu.papel ? ' <span class="selo">você</span>' : ''}<div class="mini fraco">${esc(CAT.papeis[j.papel] || j.papel)}${j.extra.pais ? ' · ' + esc(s.diplomacia.entidades[j.extra.pais]?.nome || j.extra.pais) : ''} · ${j.online ? '<span class="bom">online</span>' : 'offline'}</div></div>${j.anfitriao ? '<span class="selo ouro">anfitrião</span>' : ''}</div>`).join('');
+  const jogadores = G.jogadores.map((j) => `<div class="jogador-linha"><span class="inicial">${esc(iniciais(j.nome))}<i class="ponto-on ${j.online ? 'on' : ''}" title="${j.online ? 'online' : 'offline'}"></i></span><div class="flex1"><b class="peq">${esc(j.nome)}</b>${j.id === eu.id ? ' <span class="selo">você</span>' : ''}
+    <div class="mini fraco">${esc(CAT.papeis[j.papel] || j.papel)}${j.extra.uf ? ' · ' + esc(j.extra.uf) : ''}${j.extra.pais ? ' · ' + esc(j.extra.pais) : ''} · ${j.online ? '<span class="bom">online</span>' : 'offline'}</div></div>
+    ${j.pronto ? '<span class="selo bom">' + icone('check', 'p') + ' pronto</span>' : j.online ? '<span class="selo">jogando</span>' : ''}${j.anfitriao ? ' <span class="selo ouro">presidente</span>' : ''}</div>`).join('');
+  const prontidao = pr.total > 1 ? `<div class="pronto-box"><div class="linha entre nw"><b class="peq">${icone('relogio', 'p')} Próximo trimestre: ${pr.prontos} de ${pr.total} prontos</b>
+      ${eu.anfitriao && pr.faltam.length ? bF('Forçar avanço', 'forcarAvanco', 'btn-mini btn-perigo', 'data-confirmar="Avançar sem esperar? Eventos pendentes dos outros jogadores serão decididos automaticamente."', 'dir') : ''}</div>
+      ${UIc.medidor(pr.prontos, pr.total, 'var(--verde)')}<div class="mini fraco">${pr.faltam.length ? 'Aguardando: ' + pr.faltam.map(esc).join(', ') : 'Todos prontos.'}</div></div>` : '';
   const chat = G.mensagens.map((m) => `<div class="msg"><b>${esc(m.autor)}</b>${esc(m.texto)}</div>`).join('') || UIc.vazio('Sem mensagens. Diga olá!', 'chat');
-  const opcoesProp = Object.entries(dc.pautas).map(([k, pa]) => `<optgroup label="${esc(pa.nome)}">${Object.entries(pa.propostas).filter(([, pp]) => !pp.escopos || pp.escopos.includes(s.meta.escopo)).map(([pk, pp]) => `<option value="${k}:${pk}">${esc(pp.nome)}</option>`).join('')}</optgroup>`).join('');
+  const opcoesProp = Object.entries(dc.pautas).map(([k, pa]) => `<optgroup label="${esc(pa.nome)}">${Object.entries(pa.propostas).filter(([, pp]) => !pp.escopos || pp.escopos.includes('nacional')).map(([pk, pp]) => `<option value="${k}:${pk}">${esc(pp.nome)}</option>`).join('')}</optgroup>`).join('');
   const campo = {
-    governador: `<label class="campo">Valor (R$ bi)<input type="number" id="ped-valor" min="1" max="100" value="10"></label>${bF('Pedir repasse', 'enviarPedido', 'btn-ouro', 'data-tipo="repasse"', 'moedas')}`,
-    parlamentar: `<label class="campo">Emendas (R$ bi)<input type="number" id="ped-valor" min="1" max="100" value="10"></label>${bF('Oferecer apoio por emendas', 'enviarPedido', 'btn-ouro', 'data-tipo="apoio"', 'aperto')}`,
     ministro: `<label class="campo">Área<select id="ped-setor">${CAT.setores.map((k) => `<option value="${k}">${CAT.rotulo_setor[k]}</option>`).join('')}</select></label>${bF('Pedir mais orçamento', 'enviarPedido', 'btn-ouro', 'data-tipo="orcamento"', 'grafico')}`,
-    lider: `<label class="campo">Propor acordo (reunião com o anfitrião)<select id="ped-prop">${opcoesProp}</select></label>${bF('Propor acordo', 'enviarPedido', 'btn-ouro', 'data-tipo="reuniao"', 'aperto')}
+    parlamentar: `<label class="campo">Emendas (R$ bi)<input type="number" id="ped-valor" min="1" max="100" value="10"></label>${bF('Oferecer apoio por emendas', 'enviarPedido', 'btn-ouro', 'data-tipo="apoio"', 'aperto')}`,
+    lider: `<label class="campo">Propor acordo (reunião com o presidente)<select id="ped-prop">${opcoesProp}</select></label>${bF('Propor acordo', 'enviarPedido', 'btn-ouro', 'data-tipo="reuniao"', 'aperto')}
       <div class="sep"></div><label class="campo">Outras ações<select id="ped-acao"><option value="melhorar">Aproximação</option><option value="alianca">Aliança militar</option><option value="sancionar">Pedir sanções ao seu país</option></select></label>${bF('Enviar', 'enviarPedido', '', 'data-tipo="acordo"', 'globo')}`,
-  }[eu.papel];
-  const textoPedido = (p) => p.tipo === 'reuniao' ? `acordo: ${esc(nomeProp(p.payload.pauta, p.payload.proposta))} (${esc(s.diplomacia.entidades[p.payload.pais]?.nome || '')})`
-    : `${esc(p.tipo)} ${p.payload.valor ? 'R$ ' + p.payload.valor + ' bi' : esc(p.payload.setor || p.payload.acao || '')}`;
-  const pedidos = G.pedidos.map((p) => `<div class="jogador-linha"><div class="flex1 peq"><b>${esc(p.autor)}</b> <span class="fraco">(${esc(CAT.papeis[p.papel] || p.papel)})</span><div class="mini">${textoPedido(p)}</div></div>
-    ${p.status === 'pendente' ? (eu.anfitriao && !s.meta.encerrado ? `${bF('Aprovar', 'decidirPedido', 'btn-mini btn-ouro', `data-id="${p.id}" data-ok="1"`)} ${bF('Negar', 'decidirPedido', 'btn-mini', `data-id="${p.id}" data-ok="0"`)}` : '<span class="selo alerta">pendente</span>') : `<span class="selo ${p.status === 'aprovado' ? 'bom' : 'ruim'}">${p.status}</span>`}</div>`).join('') || UIc.vazio(eu.anfitriao ? 'Nenhum pedido. Os outros jogadores enviam pedidos por aqui.' : 'Você ainda não enviou pedidos.', 'pasta');
-  const meus = eu.papel === 'lider' ? (s.diplomacia.aguardando || []).filter((a) => a.cod === eu.extra.pais) : [];
-  const propostas = meus.length ? UIc.painel(`Propostas do ${cargo()} para você`, 'aperto', meus.map((a) => `<div class="proposta-card"><b>${esc(a.nome)}</b><div class="mini fraco">${esc(nomeFormato(a.formato))} · ${esc(efeitosProp(a.pauta, a.proposta))}</div>
-    <div class="grupo-btn mt">${bF('Aceitar', 'responderLider', 'btn-mini btn-ouro', `data-id="${a.id}" data-ok="1"`, 'check')}${bF('Rejeitar', 'responderLider', 'btn-mini', `data-id="${a.id}" data-ok="0"`, 'x')}</div></div>`).join(''), { sub: 'Você representa seu país: aceite ou rejeite' }) : '';
-  const papelTxt = { governador: 'Peça repasses de verba ao governo.', ministro: 'Peça mais orçamento para sua área.', parlamentar: 'Ofereça apoio no Congresso em troca de emendas.', lider: 'Proponha acordos e responda às propostas do anfitrião.' }[eu.papel];
+  }[eu.governa ? '' : eu.papel];
+  const detalhe = (p) => [p.payload.valor && bi(p.payload.valor), p.payload.setor && CAT.rotulo_setor[p.payload.setor], p.payload.uf,
+    p.tipo === 'reuniao' && nomeProp(p.payload.pauta, p.payload.proposta), p.payload.acao].filter(Boolean).map(esc).join(' · ');
+  const para = (p) => (p.destino ? G.jogadores.find((j) => j.id === p.destino)?.nome || '' : 'presidente');
+  const pedidos = G.pedidos.map((p) => `<div class="jogador-linha"><div class="flex1 peq"><b>${esc(p.autor)}</b> <span class="fraco">→ ${esc(para(p))}</span><div class="mini">${esc(p.nome)}${detalhe(p) ? ' · ' + detalhe(p) : ''}</div></div>
+    ${p.status === 'pendente' ? (euDecido(p) && !s.meta.encerrado ? `${bF('Aceitar', 'decidirPedido', 'btn-mini btn-ouro', `data-id="${p.id}" data-ok="1"`)} ${bF('Recusar', 'decidirPedido', 'btn-mini', `data-id="${p.id}" data-ok="0"`)}` : '<span class="selo alerta">pendente</span>') : `<span class="selo ${p.status === 'aprovado' ? 'bom' : 'ruim'}">${p.status === 'aprovado' ? 'aceito' : 'recusado'}</span>`}</div>`).join('')
+    || UIc.vazio('Nenhum pedido ainda.', 'pasta');
+  const meus = G.mp.propostas_para_mim || [];
+  const propostas = meus.length ? UIc.painel('Propostas de acordo para você', 'aperto', meus.map((a) => `<div class="proposta-card"><b>${esc(a.nome)}</b><div class="mini fraco">De ${esc(a.de)} · ${esc(nomeFormato(a.formato))} · ${esc(efeitosProp(a.pauta, a.proposta))}</div>
+    <div class="grupo-btn mt">${bF('Aceitar', 'responderLider', 'btn-mini btn-ouro', `data-id="${a.id}" data-ok="1" data-origem="${a.origem ?? ''}"`, 'check')}${bF('Recusar', 'responderLider', 'btn-mini', `data-id="${a.id}" data-ok="0" data-origem="${a.origem ?? ''}"`, 'x')}</div></div>`).join(''), { sub: 'Aceitar assina o acordo para os dois lados' }) : '';
+  const papelTxt = { ministro: 'Peça mais orçamento para sua área.', parlamentar: 'Ofereça apoio no Congresso em troca de emendas.', lider: 'Proponha acordos e responda às propostas do presidente.' }[eu.papel];
+  const especial = eu.anfitriao ? painelGovernadores() : eu.governa ? painelPresidencia() : '';
   return `<div class="grade g2"><div class="coluna">
     ${UIc.painel('Sala multiplayer', 'link', `<div class="linha entre"><div><div class="rotulo">Código da sala</div><div class="codigo-grande">${G.codigo}</div></div>${bF('Copiar convite', 'copiarLink', 'btn-ouro btn-mini', `data-link="${esc(link)}"`, 'copiar')}</div>
-      <p class="mini fraco mt">Envie o código ou o link: os amigos entram pelo menu <b>Multiplayer</b> escolhendo um papel (governador, ministro, parlamentar ou líder estrangeiro). A sala atualiza sozinha a cada poucos segundos.</p>
-      <div class="sep"></div><div class="linha entre"><span class="rotulo">Jogadores</span><span class="selo ${online > 1 ? 'bom' : ''}">${online} online de ${G.jogadores.length}</span></div>${jogadores}`)}
-    ${propostas}
-    ${UIc.painel('Pedidos', 'pasta', (eu.anfitriao ? '<p class="mini fraco">Você governa: aprove ou negue o que os outros jogadores pedem.</p>' : `<p class="mini fraco">${esc(papelTxt || '')} O anfitrião aprova ou nega.</p>`) + pedidos + (campo && !s.meta.encerrado ? `<div class="coluna mt" style="gap:10px">${campo}</div>` : ''))}</div>
-    <div class="coluna">${UIc.painel('Chat', 'chat', `<div class="chat rolagem" id="chat">${chat}</div><div class="linha nw mt"><input type="text" id="msg" maxlength="300" placeholder="Escreva uma mensagem…" autocomplete="off">${bF('', 'enviarMsg', 'btn-ouro btn-icone', 'aria-label="Enviar"', 'seta')}</div>`)}</div></div>`;
+      <p class="mini fraco mt">Os amigos entram pelo menu <b>Multiplayer</b> com o código. Como <b>governador</b>, cada um governa o próprio estado. O trimestre só avança quando <b>todos os jogadores online</b> clicam em <b>Estou pronto</b>.</p>
+      ${prontidao}<div class="sep"></div><div class="linha entre"><span class="rotulo">Jogadores</span><span class="selo ${online > 1 ? 'bom' : ''}">${online} online de ${G.jogadores.length}</span></div>${jogadores}`)}
+    ${propostas}${especial}</div>
+    <div class="coluna">${UIc.painel('Pedidos e propostas', 'pasta', (papelTxt ? `<p class="mini fraco">${esc(papelTxt)}</p>` : '') + pedidos + (campo && !s.meta.encerrado ? `<div class="coluna mt" style="gap:10px">${campo}</div>` : ''))}
+    ${UIc.painel('Chat', 'chat', `<div class="chat rolagem" id="chat">${chat}</div><div class="linha nw mt"><input type="text" id="msg" maxlength="300" placeholder="Escreva uma mensagem…" autocomplete="off">${bF('', 'enviarMsg', 'btn-ouro btn-icone', 'aria-label="Enviar"', 'seta')}</div>`)}</div></div>`;
 }
 
 /* ---------- CONFIGURAÇÕES ---------- */

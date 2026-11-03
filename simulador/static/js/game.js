@@ -10,7 +10,7 @@ async function boot() {
   TAB = salva || 'governo';
   if (!VIEWS[TAB]) TAB = 'governo';
   await carregar(true);
-  if (G && !G.eu.anfitriao && !salva) { TAB = 'sala'; render(false); }
+  if (G && !G.eu.governa && !salva) { TAB = 'sala'; render(false); }
   sincronizar();
 }
 /* Multiplayer: a cada 3 s pergunta ao servidor só uma "assinatura" (versão, jogadores, chat, pedidos);
@@ -35,10 +35,12 @@ function avisos(antigo, novo) {
   novo.mensagens.filter((m) => m.ts > ultima && m.autor !== eu.nome).slice(-2).forEach((m) => { if (TAB !== 'sala') toast(`${m.autor}: ${m.texto}`); });
   const antes = Object.fromEntries(antigo.pedidos.map((p) => [p.id, p.status]));
   novo.pedidos.forEach((p) => {
-    if (eu.anfitriao && !(p.id in antes) && p.status === 'pendente') toast(`Novo pedido de ${p.autor}. Veja a aba Sala.`);
-    if (!eu.anfitriao && p.autor === eu.nome && antes[p.id] === 'pendente' && p.status !== 'pendente') toast(`Seu pedido foi ${p.status}.`, p.status === 'aprovado' ? 'ok' : 'erro');
+    if (euDecido(p, eu) && !(p.id in antes) && p.status === 'pendente') toast(`${p.nome}: ${p.autor} aguarda sua decisão na aba Sala.`);
+    if (p.autor_id === eu.id && antes[p.id] === 'pendente' && p.status !== 'pendente') toast(`${p.nome}: ${p.status === 'aprovado' ? 'aceito' : 'recusado'}.`, p.status === 'aprovado' ? 'ok' : 'erro');
   });
-  if (!eu.anfitriao && novo.estado.meta.turno !== antigo.estado.meta.turno) toast(`Novo trimestre: ${novo.estado.meta.ano} · ${novo.estado.meta.trimestre}º tri.`);
+  const novas = (novo.mp.propostas_para_mim || []).length - (antigo.mp?.propostas_para_mim || []).length;
+  if (novas > 0) toast('Você recebeu uma proposta de acordo. Veja a aba Sala.');
+  if (novo.estado.meta.turno !== antigo.estado.meta.turno) toast(`Todos prontos: ${novo.estado.meta.ano} · ${novo.estado.meta.trimestre}º trimestre.`);
 }
 function aceitar(r) {
   const mudou = !G || r.versao !== G.versao || r.mensagens.length !== G.mensagens.length || JSON.stringify(r.jogadores) !== JSON.stringify(G.jogadores)
@@ -53,7 +55,7 @@ async function carregar(forcar) {
   if (r._status === 401) return telaEntrar();
   if (!r.ok) { $('#jogo').innerHTML = `<div class="veu"><div class="vidro modal">${UIc.vazio(esc(r.erro || 'Erro'), 'alerta')}<a class="btn btn-ouro" href="/">Voltar ao menu</a></div></div>`; return; }
   // quem entra numa sala já em andamento só vê os resultados das eleições futuras
-  if (!G && !r.eu.anfitriao && visto('eleicoes') === null) marcar('eleicoes', r.estado.eleicoes.length);
+  if (!G && !r.eu.governa && visto('eleicoes') === null) marcar('eleicoes', r.estado.eleicoes.length);
   if (aceitar(r) || forcar) render(forcar);
 }
 async function telaEntrar() {
@@ -63,13 +65,31 @@ async function telaEntrar() {
     <div class="coluna" style="gap:12px"><label class="campo">Seu nome<input type="text" id="j-nome" maxlength="30"></label>
     <label class="campo">Papel<select id="j-papel">${Object.entries(CAT.papeis).filter(([k]) => k !== 'presidente').map(([k, v]) => `<option value="${k}">${esc(v)}</option>`).join('')}</select></label>
     <label class="campo" id="j-pais-box" hidden>Posição<select id="j-pais">${r.entidades.map((e) => `<option value="${e.cod}">${esc(e.nome)}</option>`).join('')}</select></label>
+    <div id="j-gov-box">${camposGovernador(r)}</div>
     <button type="button" class="btn btn-ouro btn-grande" id="j-ok">Entrar</button></div></div></div>`;
-  $('#j-papel').onchange = () => { $('#j-pais-box').hidden = $('#j-papel').value !== 'lider'; };
+  const papel = () => $('#j-papel').value;
+  $('#j-papel').value = r.modo === 'presidente' ? 'governador' : 'ministro';
+  const ver = () => { $('#j-pais-box').hidden = papel() !== 'lider'; $('#j-gov-box').hidden = papel() !== 'governador'; };
+  $('#j-papel').onchange = ver; ver();
   $('#j-ok').onclick = async () => {
-    const j = await api(`/api/jogos/${CODIGO}/entrar`, { nome: $('#j-nome').value, papel: $('#j-papel').value, pais: $('#j-pais').value });
+    const j = await api(`/api/jogos/${CODIGO}/entrar`, { nome: $('#j-nome').value, papel: papel(), pais: $('#j-pais').value, uf: $('#j-uf')?.value, partido: $('#j-partido')?.value, ideologia: $('#j-ideo')?.value });
     if (!j.ok) return toast(j.erro || 'Erro ao entrar.', 'erro');
     Tokens.set(CODIGO, j.token); carregar(true);
   };
+}
+
+/* ---------- pronto ----------
+   Sozinho na sala, o botão avança na hora. Com outros jogadores online, cada um marca "Pronto"
+   e o trimestre avança quando todos estiverem prontos. */
+const euDecido = (p, eu = G.eu) => (p.destino ? p.destino === eu.id : eu.anfitriao);
+function botaoPronto(prox) {
+  const s = G.estado, pr = G.mp.pronto, eu = G.eu;
+  if (s.meta.encerrado && eu.governa) return '';
+  if (pr.total <= 1) return `<button type="button" class="btn btn-ouro btn-turno" data-fn="avancar" ${s.evento && eu.governa ? 'disabled title="Responda ao evento primeiro"' : ''}>${prox}${icone('dir', 'p')}</button>`;
+  const faltam = pr.faltam.filter((n) => n !== eu.nome);
+  const dica = faltam.length ? `Aguardando: ${faltam.join(', ')}` : 'Todos prontos';
+  return `<button type="button" class="btn btn-turno ${eu.pronto ? 'pronto-on' : 'btn-ouro'}" data-fn="avancar" title="${esc(dica)}" ${s.evento && eu.governa && !eu.pronto ? 'disabled' : ''}>
+    ${eu.pronto ? icone('check', 'p') + ' Pronto' : 'Estou pronto'} <span class="contagem">${pr.prontos}/${pr.total}</span></button>`;
 }
 
 /* ---------- estrutura ---------- */
@@ -96,8 +116,8 @@ function render(animar) {
         <div class="topo-info"><button type="button" class="chip" style="cursor:pointer" data-fn="copiarLink" data-link="${esc(location.origin + '/jogo/' + G.codigo)}" title="Copiar convite multiplayer">${icone('link', 'p')}Sala <b style="letter-spacing:.15em;color:var(--ouro)">${G.codigo}</b> · ${G.jogadores.length} jogador${G.jogadores.length > 1 ? 'es' : ''}</button><span class="chip">${icone('calendario', 'p')}${m.ano} · ${m.trimestre}º tri</span><span class="chip">${esc(fase)}</span>
           <span class="capital" title="Capital político: gasto em leis, nomeações, negociações e diplomacia">${icone('raio', 'p')}Capital <span class="pips">${Array.from({ length: 8 }, (_, i) => `<i class="pip ${i < s.capital ? 'on' : ''}"></i>`).join('')}</span></span>
           ${m.fase !== 'campanha' ? `<div class="mini-anel" title="Popularidade">${UIc.anel(s.popularidade, 100, '', corEstado(s.popularidade, 55, 35), 46, pct(s.popularidade))}</div>` : ''}
-          ${eu.anfitriao && !m.encerrado ? `<button type="button" class="btn btn-ouro btn-turno" data-fn="avancar" ${s.evento ? 'disabled title="Responda ao evento primeiro"' : ''}>${prox}${icone('dir', 'p')}</button>` : ''}
-          ${!eu.anfitriao ? `<span class="selo">${esc(CAT.papeis[eu.papel] || eu.papel)} · ${esc(eu.nome)}</span>` : ''}</div></header>
+          ${botaoPronto(prox)}
+          ${!eu.governa ? `<span class="selo">${esc(CAT.papeis[eu.papel] || eu.papel)} · ${esc(eu.nome)}</span>` : ''}</div></header>
       ${vKpis()}
       <main id="aba" class="${animar ? '' : 'sem-anim'}">${bloqueada(TAB) ? `<section class="vidro painel">${UIc.vazio('Disponível após a posse. Vença a eleição para governar.', 'urna')}</section>` : VIEWS[TAB]()}</main>
     </div></div>
@@ -126,16 +146,16 @@ function modais() {
   if (modalLocal) html = modalLocal();
   else if (s.meta.encerrado && visto('rel') !== 'oculto') html = modalRelatorio(s.relatorio);
   else if (s.eleicoes.length > Number(visto('eleicoes') || 0)) html = modalEleicao(s.eleicoes[s.eleicoes.length - 1]);
-  else if (s.evento && (G.eu.anfitriao || visto('ev') !== s.evento.titulo)) html = modalEvento(s.evento);
+  else if (s.evento && (G.eu.governa || visto('ev') !== s.evento.titulo)) html = modalEvento(s.evento);
   raiz.innerHTML = html;
   Retratos.carregar(raiz);
   // primeira partida: abre o tutorial quando não há nenhuma janela na frente
-  if (!html && G.eu.anfitriao && !guardar.get('sim_tutorial') && typeof Tutorial !== 'undefined' && !Tutorial.ativo) Tutorial.iniciar();
+  if (!html && G.eu.governa && !guardar.get('sim_tutorial') && typeof Tutorial !== 'undefined' && !Tutorial.ativo) Tutorial.iniciar();
 }
 function modalEvento(ev) {
   return `<div class="veu"><div class="vidro modal evento-modal" role="dialog" aria-modal="true"><span class="selo alerta tag-ev">${icone('raio', 'p')} Evento · simulado</span>
     <h2>${esc(ev.titulo)}</h2><p class="suave">${esc(ev.texto)}</p>
-    ${G.eu.anfitriao ? ev.escolhas.map((c, i) => `<button type="button" class="opcao-ev" data-a="responder_evento" data-p='{"escolha":${i}}'><span class="n">${i + 1}</span><span class="flex1"><b>${esc(c.label)}</b><div class="mini fraco">${esc(c.desc)}</div></span>${icone('dir', 'p')}</button>`).join('')
+    ${G.eu.governa ? ev.escolhas.map((c, i) => `<button type="button" class="opcao-ev" data-a="responder_evento" data-p='{"escolha":${i}}'><span class="n">${i + 1}</span><span class="flex1"><b>${esc(c.label)}</b><div class="mini fraco">${esc(c.desc)}</div></span>${icone('dir', 'p')}</button>`).join('')
     : `<div class="vazio"><span class="spinner"></span>Aguardando a decisão do anfitrião…</div><div class="linha" style="justify-content:flex-end"><button type="button" class="btn btn-mini" data-fn="fecharEvento">Fechar</button></div>`}</div></div>`;
 }
 function modalEleicao(e) {
@@ -191,7 +211,20 @@ const FN = {
   mudarAba(el) { TAB = el.dataset.aba; guardar.set('sim_aba', TAB); render(true); window.scrollTo({ top: 0, behavior: 'smooth' }); },
   mudarTema(el) { Tema.set(el.dataset.tema); render(false); },
   alternarTema() { Tema.alternar(); render(false); },
-  async avancar(el) { el.disabled = true; el.innerHTML = '<span class="spinner"></span> Processando…'; await agir('avancar_turno', {}); },
+  async avancar(el) {
+    el.disabled = true; el.innerHTML = '<span class="spinner"></span>';
+    await enviar(`/api/jogos/${CODIGO}/pronto`, { pronto: !G.eu.pronto });
+  },
+  forcarAvanco() { enviar(`/api/jogos/${CODIGO}/pronto`, { forcar: true }); },
+  irSala() { TAB = 'sala'; guardar.set('sim_aba', TAB); render(true); },
+  acaoGov(el) {
+    const id = el.dataset.id, tipo = el.dataset.tipo;
+    const payload = { governador: id, valor: $(`#gv-valor-${id}`)?.value, setor: $(`#gv-setor-${id}`)?.value };
+    enviar(`/api/jogos/${CODIGO}/pedidos`, { tipo, payload });
+  },
+  pedirPresidente(el) {
+    enviar(`/api/jogos/${CODIGO}/pedidos`, { tipo: el.dataset.tipo, payload: { valor: $('#pp-valor')?.value, setor: $('#pp-setor')?.value } });
+  },
   abrirPasta(el) { if (G.estado.meta.fase === 'campanha') return; modalLocal = modalMinistro(el.dataset.id); modais(); },
   fecharModal(el, ev) { if (ev && ev.target.closest('[data-parar]') && !ev.target.closest('[data-fn="fecharModal"].btn')) return; modalLocal = null; modais(); },
   selecionarEnt(el) { UI.sel = el.dataset.id; render(false); },
@@ -220,7 +253,7 @@ const FN = {
     if (r.ok) carregar(true);
   },
   decidirPedido(el) { enviar(`/api/jogos/${CODIGO}/pedidos/${el.dataset.id}/decidir`, { aprovar: el.dataset.ok === '1' }); },
-  responderLider(el) { enviar(`/api/jogos/${CODIGO}/propostas/${el.dataset.id}/responder`, { aceitar: el.dataset.ok === '1' }); },
+  responderLider(el) { enviar(`/api/jogos/${CODIGO}/propostas/${el.dataset.id}/responder`, { aceitar: el.dataset.ok === '1', origem: el.dataset.origem ? Number(el.dataset.origem) : null }); },
   reuSet(el) {
     UI.reu[el.dataset.k] = el.dataset.v;
     if (el.dataset.k === 'pauta') UI.reu.proposta = null;

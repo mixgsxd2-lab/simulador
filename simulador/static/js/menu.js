@@ -299,7 +299,7 @@ RENDER.continuar = async () => {
 
 /* ---------- MULTIPLAYER ---------- */
 RENDER.multi = () => {
-  const papeis = [['governador', 'mapa', 'Pede repasses ao governo federal.'], ['ministro', 'pasta', 'Pede mais orçamento para sua área.'], ['parlamentar', 'congresso', 'Troca apoio por emendas.'], ['lider', 'globo', 'Representa um país: propõe acordos e aceita ou rejeita as propostas do anfitrião.']];
+  const papeis = [['governador', 'mapa', 'Governa o próprio estado (orçamento, Assembleia, leis, eleição) e negocia verbas, obras e apoio com o presidente e os outros governadores.'], ['ministro', 'pasta', 'Pede mais orçamento para sua área.'], ['parlamentar', 'congresso', 'Troca apoio por emendas.'], ['lider', 'globo', 'Representa um país: propõe acordos e aceita ou rejeita as propostas do anfitrião.']];
   $('#tela-multi').innerHTML = `<div class="conteudo">${topoTela('Multiplayer', 'Entre na partida de um amigo pelo código')}
     <section class="vidro painel" style="margin-bottom:16px"><div class="linha entre"><div class="linha nw"><span class="ico-caixa" style="width:42px;height:42px;border-radius:13px;display:grid;place-items:center;background:var(--vidro-3);color:var(--ouro)">${icone('mais')}</span>
       <div><h2 class="mb0">Criar partida multiplayer</h2><div class="fraco peq">Crie sua campanha; o código da sala aparece no topo do jogo para os amigos entrarem.</div></div></div>
@@ -309,22 +309,26 @@ RENDER.multi = () => {
       <label class="campo">Seu nome<input type="text" id="j-nome" maxlength="30"></label>
       <label class="campo">Papel<select id="j-papel">${papeis.map(([k]) => `<option value="${k}">${esc(CAT.papeis[k])}</option>`).join('')}</select></label>
       <label class="campo" id="j-pais-box" hidden>País ou estado que você representa<select id="j-pais"></select></label>
+      <div id="j-gov-box">${camposGovernador(null)}</div>
       <button type="button" class="btn btn-ouro btn-grande" id="j-entrar">${icone('seta')} Entrar</button></div></section>
     <section class="vidro painel"><div class="painel-cab"><span class="ico-caixa">${icone('pessoas')}</span><h2>Como funciona</h2></div>
-      <p class="suave peq">Quem cria a partida é o anfitrião e governa. Os demais jogadores entram com o código, enviam pedidos que ele aprova ou nega e conversam pelo chat. Tudo atualiza sozinho a cada poucos segundos, e a aba <b>Sala</b> mostra quem está online.</p>
+      <p class="suave peq"><b>O trimestre só avança quando todos os jogadores online clicam em "Estou pronto".</b> Quem cria a partida é o presidente. Os demais jogadores entram com o código, enviam pedidos que ele aprova ou nega e conversam pelo chat. Tudo atualiza sozinho a cada poucos segundos, e a aba <b>Sala</b> mostra quem está online.</p>
       <div class="coluna" style="gap:10px">${papeis.map(([k, ic, d]) => `<div class="linha nw"><span class="ico-caixa" style="width:36px;height:36px;border-radius:11px;display:grid;place-items:center;background:var(--vidro-3);color:var(--ouro)">${icone(ic)}</span><div><b>${esc(CAT.papeis[k])}</b><div class="fraco peq">${d}</div></div></div>`).join('')}</div></section></div></div>`;
   const sel = $('#j-papel');
   const atualizar = async () => {
-    const lider = sel.value === 'lider'; $('#j-pais-box').hidden = !lider; if (!lider) return;
+    const lider = sel.value === 'lider', gov = sel.value === 'governador';
+    $('#j-pais-box').hidden = !lider; $('#j-gov-box').hidden = !gov;
     const cod = $('#j-codigo').value.trim().toUpperCase();
     const r = cod.length === 5 ? await api(`/api/jogos/${cod}/resumo`) : null;
-    $('#j-pais').innerHTML = r && r.ok ? r.entidades.map((e) => `<option value="${e.cod}">${esc(e.nome)}</option>`).join('') : '<option value="">Informe o código primeiro</option>';
+    const ok = r && r.ok;
+    if (gov) { const uf = $('#j-uf')?.value, pt = $('#j-partido')?.value, id = $('#j-ideo')?.value; $('#j-gov-box').innerHTML = camposGovernador(ok ? r : null); if (uf && $(`#j-uf option[value="${uf}"]`)) $('#j-uf').value = uf; if (pt) $('#j-partido').value = pt; if (id) $('#j-ideo').value = id; }
+    if (lider) $('#j-pais').innerHTML = ok ? r.entidades.map((e) => `<option value="${e.cod}">${esc(e.nome)}</option>`).join('') : '<option value="">Informe o código primeiro</option>';
   };
-  sel.onchange = atualizar; $('#j-codigo').oninput = atualizar;
+  sel.onchange = atualizar; $('#j-codigo').oninput = atualizar; atualizar();
   $('#j-entrar').onclick = async () => {
     const cod = $('#j-codigo').value.trim().toUpperCase();
     if (cod.length !== 5) return toast('Informe o código de 5 caracteres.', 'erro');
-    const r = await api(`/api/jogos/${cod}/entrar`, { nome: $('#j-nome').value, papel: sel.value, pais: $('#j-pais').value });
+    const r = await api(`/api/jogos/${cod}/entrar`, { nome: $('#j-nome').value, papel: sel.value, pais: $('#j-pais').value, uf: $('#j-uf')?.value, partido: $('#j-partido')?.value, ideologia: $('#j-ideo')?.value });
     if (!r.ok) return toast(r.erro || 'Não foi possível entrar.', 'erro');
     Tokens.set(cod, r.token); location.href = '/jogo/' + cod;
   };

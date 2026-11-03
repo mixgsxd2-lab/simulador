@@ -279,6 +279,8 @@ def denunciar_acordo(estado, p, rng):
 def pedir_repasse(estado, p, rng):
     if estado["meta"]["escopo"] != "estadual":
         return False, "Indisponível."
+    if estado["federal"].get("vinculado"):
+        return False, "O presidente é um jogador: faça seus pedidos a ele na aba Sala."
     erro = _cap(estado, 2)
     if erro:
         return False, erro
@@ -294,6 +296,8 @@ def pedir_repasse(estado, p, rng):
 def alinhar_federal(estado, p, rng):
     if estado["meta"]["escopo"] != "estadual":
         return False, "Indisponível."
+    if estado["federal"].get("vinculado"):
+        return False, "O presidente é um jogador: faça seus pedidos a ele na aba Sala."
     erro = _cap(estado, 1)
     if erro:
         return False, erro

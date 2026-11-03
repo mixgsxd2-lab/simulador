@@ -39,6 +39,9 @@ def alocacao_inicial(escopo):
 def _macro_federal(estado, rng):
     """Macroeconomia exógena para o modo governador."""
     f = estado["federal"]
+    if f.get("vinculado"):  # multiplayer: a economia federal é a do presidente (jogador); só a relação oscila
+        f["relacao"] = clamp(f["relacao"] + (50 - f["relacao"]) * 0.02 + rng.uniform(-1, 1), 0, 100)
+        return
     f["crescimento"] = clamp(f["crescimento"] * 0.8 + 2.0 * 0.2 + rng.uniform(-0.5, 0.5) + f.get("viés", 0), -4, 6)
     f["inflacao"] = clamp(f["inflacao"] * 0.8 + 4.0 * 0.2 + rng.uniform(-0.3, 0.3), 2, 14)
     f["selic"] = clamp(f["selic"] + clamp((f["inflacao"] - 4.5) * 0.3, -0.75, 0.75), 3, 18)
