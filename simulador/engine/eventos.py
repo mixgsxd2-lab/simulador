@@ -1,5 +1,6 @@
 """Sorteio e resolução de eventos aleatórios."""
 from ..data.eventos import EVENTOS
+from ..data.cupulas import CUPULAS, SEDES_BRICS, acontece
 from ..data.politica import CENARIOS
 from .util import aplicar_efeitos, noticia, clamp
 from . import justica
@@ -64,10 +65,60 @@ def sortear(estado, rng):
     estado["meta"]["eventos_total"] = estado["meta"].get("eventos_total", 0) + 1
 
 
+# ---------- cúpulas obrigatórias (ONU, BRICS, Mercosul, COP30) ----------
+def _mostrar(estado, ev):
+    """Mostra o evento agora ou o coloca na fila (só existe um evento pendente por vez)."""
+    if estado["evento"]:
+        estado.setdefault("eventos_fila", []).append(ev)
+    else:
+        estado["evento"] = ev
+
+
+def cupulas_obrigatorias(estado, rng=None):
+    """Chamada no início de cada trimestre: agenda as cúpulas obrigatórias do período."""
+    m = estado["meta"]
+    if m["escopo"] != "nacional" or m["encerrado"] or m["fase"] != "governo":
+        return
+    for cid, c in CUPULAS.items():
+        if not acontece(c, m["ano"], m["trimestre"]):
+            continue
+        titulo = c["titulo"].format(ano=m["ano"], semestre=1 if m["trimestre"] <= 2 else 2)
+        texto = c["texto"].format(sede=SEDES_BRICS.get(m["ano"], "um país-membro"))
+        _mostrar(estado, {"id": "cupula:" + cid, "cupula": cid, "obrigatorio": True, "titulo": titulo, "texto": texto,
+                          "escolhas": [{"label": e["label"], "desc": e.get("desc", "")} for e in c["escolhas"]]})
+        noticia(estado, f"{titulo}: participação obrigatória do Brasil.", "evento")
+
+
+def _responder_cupula(estado, pend, indice):
+    c = CUPULAS[pend["cupula"]]
+    if indice < 0 or indice >= len(c["escolhas"]):
+        return False, "Escolha inválida."
+    esc = c["escolhas"][indice]
+    aplicar_efeitos(estado, esc["efeitos"])
+    for x in estado["diplomacia"]["entidades"].values():
+        if x["guerra"]:
+            continue
+        d = esc["rel"].get("todos", 0) + esc["rel"].get(x["bloco"], 0)
+        if d:
+            x["rel"] = round(clamp(x["rel"] + d, 0, 100), 2)
+    estado.setdefault("cupulas_hist", []).insert(0, {"cupula": pend["cupula"], "nome": c["nome"], "titulo": pend["titulo"], "posicao": esc["label"],
+                                                      "ano": estado["meta"]["ano"], "tri": estado["meta"]["trimestre"]})
+    del estado["cupulas_hist"][20:]
+    msg = f"{pend['titulo']} — {esc['label']}: {esc['texto']}"
+    noticia(estado, msg, "evento")
+    return True, msg
+
+
 def responder(estado, indice, rng):
     pend = estado["evento"]
     if not pend:
         return False, "Nenhum evento pendente."
+    if pend.get("cupula"):
+        ok, msg = _responder_cupula(estado, pend, indice)
+        if ok:
+            fila = estado.get("eventos_fila") or []
+            estado["evento"] = fila.pop(0) if fila else None
+        return ok, msg
     ev = EVENTOS[pend["id"]]
     if indice < 0 or indice >= len(ev["escolhas"]):
         return False, "Escolha inválida."
@@ -85,7 +136,8 @@ def responder(estado, indice, rng):
     aplicar_efeitos(estado, _mitigar(estado, efeitos, ev.get("mitiga")))
     if esc.get("especial"):
         _especial(estado, esc["especial"], rng)
-    estado["evento"] = None
+    fila = estado.get("eventos_fila") or []
+    estado["evento"] = fila.pop(0) if fila else None
     msg = f"{ev['titulo']} — {esc['label']}: {esc.get('texto', '')} {resultado}".strip()
     noticia(estado, msg, "evento")
     return True, msg

@@ -332,7 +332,7 @@ def encerrar_run(estado, p, rng):
 HANDLERS = {f.__name__: f for f in (
     ajustar_impostos, ajustar_orcamento, pressionar_bc, nomear_ministro, demitir_ministro, propor_lei, negociar,
     responder_investigacao, pressionar_stf, indicar_stf, publicidade, negociar_impeachment, acao_diplomatica,
-    reuniao_diplomatica, cupula_multilateral, responder_proposta, denunciar_acordo,
+    responder_proposta, denunciar_acordo,
     pedir_repasse, alinhar_federal, campanha, responder_evento, avancar_turno, encerrar_run)}
 
 # ações permitidas durante a campanha inicial (antes da posse)

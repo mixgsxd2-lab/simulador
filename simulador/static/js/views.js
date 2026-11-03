@@ -1,6 +1,5 @@
 /* Abas da tela de jogo. Estado global: G (pacote da API), CAT (catálogo), UI (estado local de interface). */
-const UI = { sel: null, nomeSel: '', destaque: null, catLei: 'todas', vista: {}, draft: null,
-  reu: { formato: 'cupula', pauta: 'comercio', proposta: null, concessao: 'nenhuma' } };
+const UI = { sel: null, nomeSel: '', destaque: null, catLei: 'todas', vista: {}, draft: null };
 const S = () => G.estado;
 const D = () => G.derivados;
 const NAC = () => G.estado.meta.escopo === 'nacional';
@@ -255,61 +254,50 @@ function painelEntidade() {
   const st = `<span class="rotulo">${esc(x.bloco)}${x.regime ? ' · ' + esc(x.regime) : ''}</span><h2 class="titulo-display" style="font-size:1.6rem;margin:.2em 0">${esc(x.nome)}</h2><div class="linha">${chipsEnt(x)}</div>
     ${UIc.barra('Relação', x.rel, corRelacao(x.rel))}`;
   if (!NAC()) {
-    return `${st}<div class="grade g2 peq"><div><div class="rotulo">PIB</div><b>R$ ${nf(x.pib, 0)} bi</b></div><div><div class="rotulo">Governador (eleito em 2022)</div><b>${esc(x.lider || '—')}</b></div></div>
-      ${painelReuniao(x)}${acordosCom(x)}`;
+    const humano = x.jogador && (G.mp?.governadores || []).find((g) => g.uf === x.cod);
+    const acoes = humano
+      ? `<p class="mini fraco mt">${esc(x.jogador)} é um jogador: ele aceita ou recusa o consórcio pela aba Sala.</p>${bF(x.tratado ? 'Consórcio em vigor' : 'Propor consórcio', 'propConsorcio', 'btn-mini btn-ouro', `data-id="${humano.id}" ${x.tratado || !PODE() ? 'disabled' : ''}`, 'link')}`
+      : `<div class="grupo-btn mt">${bA('Missão de cooperação (1)', 'acao_diplomatica', { acao: 'melhorar', alvo: x.cod }, 'btn-mini', '', 'aperto')}${bA('Firmar consórcio (2)', 'acao_diplomatica', { acao: 'tratado', alvo: x.cod }, 'btn-mini btn-ouro', '', 'link')}</div><p class="mini fraco mt mb0">Consórcio exige relação ≥ 55.</p>`;
+    return `${st}<div class="grade g2 peq"><div><div class="rotulo">PIB</div><b>R$ ${nf(x.pib, 0)} bi</b></div><div><div class="rotulo">${x.jogador ? 'Governador (jogador)' : 'Governador (eleito em 2022)'}</div><b>${esc(x.jogador || x.lider || '—')}</b></div></div>${acoes}${acordosCom(x)}`;
   }
   const g = d.guerras.find((w) => w.cod === x.cod);
   return `${st}<div class="grade g3 peq"><div><div class="rotulo">PIB</div><b>US$ ${nf(x.pib, 2)} tri</b></div><div><div class="rotulo">Militar</div><b>${x.militar}</b></div><div><div class="rotulo">Seu poder</div><b>${nf(d.militar, 0)}</b></div></div>
     ${g ? `<div class="guerra-card mt"><b class="ruim">${icone('mira', 'p')} Em guerra · ${g.turnos} trimestres</b>${UIc.barra('Front', (g.progresso + 100) / 2, g.progresso >= 0 ? 'var(--verde)' : 'var(--vermelho)', nf(g.progresso, 0))}</div>` : ''}
-    ${painelReuniao(x)}${acordosCom(x)}
-    <div class="rotulo mt-g">Outras ações</div><div class="grupo-btn mt">${bA('Aliança (2)', 'acao_diplomatica', { acao: 'alianca', alvo: x.cod }, 'btn-mini', '', 'escudo')}
+    <div class="grupo-btn mt">${bA('Missão diplomática (1)', 'acao_diplomatica', { acao: 'melhorar', alvo: x.cod }, 'btn-mini', '', 'aperto')}${bA('Acordo comercial (2)', 'acao_diplomatica', { acao: 'tratado', alvo: x.cod }, 'btn-mini', '', 'link')}${bA('Aliança (2)', 'acao_diplomatica', { acao: 'alianca', alvo: x.cod }, 'btn-mini', '', 'escudo')}
       ${x.sancao ? bA('Retirar sanções', 'acao_diplomatica', { acao: 'retirar_sancao', alvo: x.cod }, 'btn-mini') : bA('Sancionar (1)', 'acao_diplomatica', { acao: 'sancionar', alvo: x.cod }, 'btn-mini btn-perigo', '', 'alerta')}
       ${x.guerra ? bA('Negociar paz (1)', 'acao_diplomatica', { acao: 'paz', alvo: x.cod }, 'btn-mini btn-ouro', '', 'bandeira') : bA('Declarar guerra (3)', 'acao_diplomatica', { acao: 'declarar_guerra', alvo: x.cod }, 'btn-mini btn-perigo', `data-confirmar="Declarar guerra contra ${esc(x.nome)}? O prestígio na ONU despenca e o custo é alto."`, 'mira')}</div>
-    <p class="mini fraco mt mb0">Aliança: relação ≥ 70 · Guerra: poder militar ≥ 30. Dados econômicos aproximados.</p>`;
+    ${acordosCom(x)}<p class="mini fraco mt mb0">Acordo comercial: relação ≥ 55 · Aliança: ≥ 70 · Guerra: poder militar ≥ 30. Dados econômicos aproximados.</p>`;
 }
-const nomeFormato = (k) => (NAC() ? CAT.diplomacia.formatos[k]?.nome : { telefonema: 'Telefonema', chanceleres: 'Reunião de secretários', cupula: 'Encontro de governadores', visita: 'Visita oficial' }[k]) || k;
 const nomeProp = (pauta, k) => CAT.diplomacia.pautas[pauta]?.propostas[k]?.nome || k;
 const efeitosProp = (pauta, k) => (CAT.diplomacia.pautas[pauta]?.propostas[k]?.efeitos || []).join(' · ');
-function bloqueioProp(x, k, p) {
-  if (p.escopos && !p.escopos.includes(S().meta.escopo)) return 'indisponível neste modo';
-  if (p.min_pib && NAC() && x.pib < p.min_pib) return 'economia pequena demais para isso';
-  if ((S().diplomacia.acordos || []).some((a) => a.cod === x.cod && a.proposta === k)) return 'já está em vigor';
-  return '';
-}
-/* mesma fórmula do servidor (engine/diplomacia.py: chance) */
-function chanceReu(x, r) {
-  const base = D().diplo_base?.[x.cod], dc = CAT.diplomacia;
-  if (base === undefined || base <= -1) return 0;
-  return clampN(base + (dc.interesse[x.bloco]?.[r.pauta] || 0) + dc.formatos[r.formato].bonus + dc.concessoes[r.concessao].bonus - dc.pautas[r.pauta].propostas[r.proposta].dif, 0.03, 0.95);
-}
-function painelReuniao(x) {
-  const s = S(), dc = CAT.diplomacia, r = UI.reu;
-  if (x.guerra) return '<div class="dossie mt">Em guerra: negocie a paz antes de qualquer reunião.</div>';
-  const props = r.pauta ? dc.pautas[r.pauta].propostas : {};
-  if (r.pauta && (!props[r.proposta] || bloqueioProp(x, r.proposta, props[r.proposta]))) r.proposta = Object.keys(props).find((k) => !bloqueioProp(x, k, props[k])) || null;
-  const f = dc.formatos[r.formato], comAcordo = !!(r.pauta && r.proposta);
-  const ja = (s.diplomacia.reunioes || []).some((m) => m.cod === x.cod && m.turno === s.meta.turno);
-  const fmt = Object.entries(dc.formatos).map(([k, v]) => `<button type="button" class="filtro ${r.formato === k ? 'ativo' : ''}" data-fn="reuSet" data-k="formato" data-v="${k}" title="${esc(v.desc)}">${esc(nomeFormato(k))} · ${v.capital}${icone('raio', 'p')}</button>`).join('');
-  const pautas = [['', 'Só aproximação'], ...Object.entries(dc.pautas).map(([k, p]) => [k, p.nome])].map(([k, t]) => `<button type="button" class="filtro ${(r.pauta || '') === k ? 'ativo' : ''}" data-fn="reuSet" data-k="pauta" data-v="${k}">${k ? icone(dc.pautas[k].ico, 'p') + ' ' : ''}${esc(t)}</button>`).join('');
-  const cards = Object.entries(props).map(([k, p]) => { const b = bloqueioProp(x, k, p); return `<button type="button" class="prop-card ${r.proposta === k ? 'sel' : ''}" data-fn="reuSet" data-k="proposta" data-v="${k}" ${b ? 'disabled' : ''}><b>${esc(p.nome)}</b><small>${esc(p.efeitos.join(' · '))}</small>${b ? `<small class="alerta">${esc(b)}</small>` : ''}</button>`; }).join('');
-  const conc = comAcordo ? Object.entries(dc.concessoes).map(([k, c]) => `<button type="button" class="filtro ${r.concessao === k ? 'ativo' : ''}" data-fn="reuSet" data-k="concessao" data-v="${k}">${esc(c.nome)}${c.custo ? ' · ' + bi(c.custo) : ''}</button>`).join('') : '';
-  const custoBi = f.custo + (comAcordo ? dc.concessoes[r.concessao].custo : 0);
-  let res = '';
-  if (comAcordo) res = x.jogador ? `<div class="chance-box"><span class="selo ouro">${icone('usuario', 'p')} ${esc(x.jogador)}</span><span class="peq">é um jogador: ele decide se aceita.</span></div>`
-    : (() => { const c = chanceReu(x, r) * 100; return `<div class="chance-box"><span class="rotulo">Chance de aceitar</span>${UIc.medidor(c, 100, corEstado(c, 55, 30))}<b class="num">${nf(c, 0)}%</b></div>`; })();
-  const params = { alvo: x.cod, formato: r.formato, pauta: r.pauta || '', proposta: comAcordo ? r.proposta : '', concessao: r.concessao };
-  return `<div class="reuniao mt"><div class="linha entre nw"><span class="rotulo">${icone('aperto', 'p')} Reunião diplomática</span><span class="mini fraco">${f.capital} de capital${custoBi ? ' · ' + bi(custoBi) : ''}</span></div>
-    <div class="mini fraco mt">Formato</div><div class="filtros mb0">${fmt}</div><p class="mini fraco">${esc(f.desc)}</p>
-    <div class="mini fraco">Pauta</div><div class="filtros mb0">${pautas}</div>
-    ${cards ? `<div class="props mt">${cards}</div>` : ''}${conc ? `<div class="mini fraco mt">Concessões (aumentam a chance)</div><div class="filtros mb0">${conc}</div>` : ''}${res}
-    <div class="linha entre mt">${ja ? '<span class="mini alerta">Já houve reunião com este país neste trimestre.</span>' : '<span class="mini fraco">Aceito: acordo assinado. Rejeitado: relação cai um pouco.</span>'}
-      ${bA(comAcordo ? 'Convocar e propor' : 'Convocar reunião', 'reuniao_diplomatica', params, 'btn-ouro btn-mini', ja || (r.pauta && !r.proposta) ? 'disabled' : '', 'aperto')}</div></div>`;
-}
+/* acordos antigos (de partidas anteriores ou de pedidos de líderes estrangeiros no multiplayer) */
 function linhaAcordo(a) {
   return `<div class="acordo-linha">${icone(CAT.diplomacia.pautas[a.pauta]?.ico || 'link', 'p')}<div class="flex1"><b class="peq">${esc(a.nome)}</b><div class="mini fraco">${esc(a.pais)} · desde ${a.ano} · ${esc(efeitosProp(a.pauta, a.proposta))}</div></div>
     ${bA('Sair (1)', 'denunciar_acordo', { id: a.id }, 'btn-mini btn-fantasma', `data-confirmar="Sair do acordo '${esc(a.nome)}'? A relação com ${esc(a.pais)} piora e o prestígio cai."`)}</div>`;
 }
 const acordosCom = (x) => { const l = (S().diplomacia.acordos || []).filter((a) => a.cod === x.cod); return l.length ? `<div class="rotulo mt-g">Acordos com ${esc(x.nome)}</div>${l.map(linhaAcordo).join('')}` : ''; };
+
+/* cúpulas obrigatórias: próximas datas e posições já tomadas */
+function proximasCupulas(n = 4) {
+  const m = S().meta, out = [];
+  let ano = m.ano, tri = m.trimestre;
+  for (let k = 0; k < 12 && out.length < n; k++) {
+    tri++; if (tri > 4) { tri = 1; ano++; }
+    for (const [id, c] of Object.entries(CAT.cupulas)) {
+      const vale = c.datas ? c.datas.some(([a, t]) => a === ano && t === tri) : c.trimestres.includes(tri);
+      if (vale) out.push({ id, nome: c.nome, ano, tri });
+    }
+  }
+  return out.slice(0, n);
+}
+function painelCupulas() {
+  const s = S(), hist = s.cupulas_hist || [];
+  const ico = { mercosul: 'aperto', brics: 'globo', onu: 'bandeira', cop30: 'folha' };
+  const prox = proximasCupulas().map((c) => `<div class="linha entre nw peq" style="padding:6px 0;border-bottom:1px solid var(--borda)"><span>${icone(ico[c.id] || 'globo', 'p')} <b>${esc(c.nome)}</b></span><span class="selo">${c.ano} · ${c.tri}º tri</span></div>`).join('');
+  const feitas = hist.slice(0, 6).map((h) => `<div class="peq" style="padding:5px 0;border-bottom:1px solid var(--borda)">${h.ano} T${h.tri} · <b>${esc(h.nome)}</b><div class="mini fraco">Posição do Brasil: ${esc(h.posicao)}</div></div>`).join('');
+  return UIc.painel('Cúpulas obrigatórias', 'calendario', `<p class="mini fraco">O Brasil participa obrigatoriamente das cúpulas do <b>Mercosul</b> (2 por ano), do <b>BRICS</b> e da <b>Assembleia Geral da ONU</b> (1 por ano), além da <b>COP30</b> em Belém (2025). Quando chegam, você escolhe a posição do país antes de avançar o trimestre.</p>
+    <div class="rotulo mt">Próximas</div>${prox || '<div class="fraco peq">—</div>'}${feitas ? `<div class="rotulo mt-g">Participações</div>${feitas}` : ''}`);
+}
 
 function vDiplomacia() {
   const s = S(), d = s.diplomacia, ent = Object.values(d.entidades).sort((a, b) => b.rel - a.rel);
@@ -323,28 +311,18 @@ function vDiplomacia() {
       ${bF('Negociar com o presidente', 'irSala', 'btn-mini btn-ouro', '', 'aperto')}`)
     : UIc.painel('Governo Federal', 'palacio', `${UIc.barra('Relação com Brasília', s.federal.relacao, corEstado(s.federal.relacao, 60, 35))}<p class="mini fraco">Define o volume de repasses ao estado.</p>
       <div class="grupo-btn">${bA('Pedir repasse extra (2)', 'pedir_repasse', {}, 'btn-mini btn-ouro', '', 'moedas')}${bA('Alinhar-se a Brasília (1)', 'alinhar_federal', {}, 'btn-mini', '', 'aperto')}</div>`);
-  const dc = CAT.diplomacia, turno = s.meta.turno;
+  const turno = s.meta.turno;
   const recebidas = (d.propostas || []).map((p) => `<div class="proposta-card"><div class="linha entre nw"><b>${esc(p.pais)}</b><span class="selo alerta">${icone('relogio', 'p')} expira em ${Math.max(0, p.expira - turno)} trim.</span></div>
-    <div class="peq mt">${icone(dc.pautas[p.pauta].ico, 'p')} ${esc(p.nome)}</div><div class="mini fraco">${esc(efeitosProp(p.pauta, p.proposta))}</div>
-    <div class="mini ${p.contrapartida ? 'alerta' : 'fraco'}">${p.contrapartida ? esc(p.pais) + ' ' + esc(p.contrapartida.txt) + '.' : 'Sem contrapartida.'}</div>
+    <div class="peq mt">${esc(p.nome)}</div><div class="mini fraco">${esc(efeitosProp(p.pauta, p.proposta))}</div>
     <div class="grupo-btn mt">${bA('Aceitar', 'responder_proposta', { id: p.id, aceitar: true }, 'btn-mini btn-ouro', '', 'check')}${bA('Recusar', 'responder_proposta', { id: p.id, aceitar: false }, 'btn-mini', '', 'x')}</div></div>`).join('');
-  const painelRecebidas = recebidas ? UIc.painel('Propostas recebidas', 'jornal', recebidas, { sub: `Outros ${NAC() ? 'países' : 'estados'} propõem acordos: aceite ou recuse (recusar piora um pouco a relação)` }) : '';
+  const painelRecebidas = recebidas ? UIc.painel('Propostas pendentes', 'jornal', recebidas) : '';
   const acs = d.acordos || [];
-  const painelAcordos = UIc.painel(NAC() ? 'Acordos e tratados' : 'Consórcios e acordos', 'link', acs.length ? acs.map(linhaAcordo).join('') : UIc.vazio(`Nenhum acordo ainda. Selecione um ${NAC() ? 'país' : 'estado'} e convoque uma reunião.`, 'link'), { sub: `${acs.length} em vigor` });
-  const aguard = (d.aguardando || []).map((a) => `<div class="linha entre peq" style="padding:6px 0"><span><b>${esc(d.entidades[a.cod]?.nome || a.cod)}</b> · ${esc(a.nome)}</span><span class="selo alerta">aguardando ${esc(d.entidades[a.cod]?.jogador || '')}</span></div>`).join('');
-  const log = (d.reunioes || []).slice(0, 8).map((r) => `<div class="linha entre nw peq" style="padding:6px 0;border-bottom:1px solid var(--borda)"><span class="flex1">${r.ano} T${r.tri} · <b>${esc(r.pais)}</b> · ${esc(nomeFormato(r.formato))}${r.proposta ? ' — ' + esc(nomeProp(r.pauta, r.proposta)) : ''}${r.aceitos ? `<div class="mini fraco">Aderiram: ${esc(r.aceitos.join(', ') || '—')}</div>` : ''}</span>
-    <span class="selo ${r.aceito === true ? 'bom' : r.aceito === false ? 'ruim' : ''}">${r.aceito === true ? 'acordo' : r.aceito === false ? 'rejeitado' : r.proposta ? 'aguardando' : 'conversa'}</span></div>`).join('');
-  const painelLog = log || aguard ? UIc.painel('Reuniões recentes', 'calendario', aguard + log) : '';
-  const blocos = [...new Set(Object.values(d.entidades).map((e) => e.bloco))].filter((b) => Object.values(d.entidades).filter((e) => e.bloco === b).length >= 2);
-  const opcoesProp = Object.entries(dc.pautas).map(([k, pa]) => `<optgroup label="${esc(pa.nome)}">${Object.entries(pa.propostas).filter(([, pp]) => !pp.escopos || pp.escopos.includes(s.meta.escopo)).map(([pk, pp]) => `<option value="${k}:${pk}">${esc(pp.nome)}</option>`).join('')}</optgroup>`).join('');
-  const painelCupula = NAC() ? UIc.painel('Cúpula de bloco', 'pessoas', `<p class="mini fraco">Reúna os membros de um bloco; cada país aceita ou rejeita a proposta. Custa 3 de capital e R$ 10 bi.</p>
-    <div class="grade g2"><label class="campo">Bloco<select id="cup-bloco">${blocos.map((b) => `<option>${esc(b)}</option>`).join('')}</select></label><label class="campo">Proposta<select id="cup-prop">${opcoesProp}</select></label></div>
-    <div class="linha mt" style="justify-content:flex-end">${bF('Convocar cúpula (3)', 'convocarCupula', 'btn-ouro btn-mini', PODE() ? '' : 'disabled', 'pessoas')}</div>`) : '';
+  const painelAcordos = acs.length ? UIc.painel('Acordos em vigor', 'link', acs.map(linhaAcordo).join(''), { sub: `${acs.length} em vigor` }) : '';
   const guerras = d.guerras.length ? UIc.painel('Conflitos', 'mira', d.guerras.map((g) => `<div class="guerra-card"><b>${esc(d.entidades[g.cod].nome)}</b> · ${g.turnos} trimestres${UIc.barra('Front', (g.progresso + 100) / 2, g.progresso >= 0 ? 'var(--verde)' : 'var(--vermelho)', nf(g.progresso, 0))}</div>`).join('')) : '';
   return `<div class="layout-diplo"><div class="coluna"><section class="vidro mapa-painel"><div class="painel-cab"><span class="ico-caixa">${icone(NAC() ? 'globo' : 'mapa')}</span><div class="flex1"><h2>${NAC() ? 'Relações internacionais' : 'Relações federativas'}</h2>
       <div class="mini fraco">${NAC() ? '194 países · parceiros principais coloridos' : '26 estados e DF'}</div></div></div><div id="mapa-diplo"></div><div class="legenda-rel"><span>hostil</span><i></i><span>aliado</span></div></section>${guerras}
-    ${painelAcordos}${painelLog}</div>
-    <div class="coluna"><section class="vidro max painel" id="painel-ent">${painelEntidade()}</section>${painelRecebidas}${extra}${painelCupula}${UIc.painel(NAC() ? 'Parceiros' : 'Estados', 'bandeira', lista)}</div></div>`;
+    ${NAC() ? painelCupulas() : ''}${painelAcordos}</div>
+    <div class="coluna"><section class="vidro max painel" id="painel-ent">${painelEntidade()}</section>${painelRecebidas}${extra}${UIc.painel(NAC() ? 'Parceiros' : 'Estados', 'bandeira', lista)}</div></div>`;
 }
 
 /* ---------- POPULAÇÃO ---------- */
@@ -413,11 +391,11 @@ function painelPresidencia() {
     ${pode && !pr.encerrado ? `<div class="gov-acoes"><label class="campo">R$ bi<input type="number" id="pp-valor" min="1" max="100" value="10"></label><label class="campo">Área${opcoesSetor('pp-setor')}</label></div>
     <div class="grupo-btn mt">${bF('Pedir repasse', 'pedirPresidente', 'btn-mini btn-ouro', 'data-tipo="repasse"', 'moedas')}${bF('Pedir programa federal', 'pedirPresidente', 'btn-mini', 'data-tipo="obra" title="R$ 20 bi do governo federal na área escolhida"', 'predio')}
       ${bF('Pedir Força Nacional', 'pedirPresidente', 'btn-mini', 'data-tipo="forca_nacional"', 'escudo')}${bF('Oferecer apoio político', 'pedirPresidente', 'btn-mini', 'data-tipo="apoio_politico" title="Melhora muito a relação; a polarização no estado sobe um pouco"', 'aperto')}</div>` : ''}
-    ${colegas ? `<div class="rotulo mt-g">Outros governadores</div>${colegas}<p class="mini fraco mb0">Proponha consórcios a eles na aba Diplomacia: o outro jogador aceita ou recusa.</p>` : ''}`, { sub: 'Seu estado depende de Brasília' });
+    ${colegas ? `<div class="rotulo mt-g">Outros governadores</div>${colegas}<p class="mini fraco mb0">Proponha consórcios clicando no estado deles na aba Diplomacia: o outro jogador aceita ou recusa.</p>` : ''}`, { sub: 'Seu estado depende de Brasília' });
 }
 
 function vSala() {
-  const s = S(), eu = G.eu, link = location.origin + '/jogo/' + G.codigo, dc = CAT.diplomacia, pr = G.mp.pronto;
+  const s = S(), eu = G.eu, link = location.origin + '/jogo/' + G.codigo, pr = G.mp.pronto;
   const online = G.jogadores.filter((j) => j.online).length;
   const jogadores = G.jogadores.map((j) => `<div class="jogador-linha"><span class="inicial">${esc(iniciais(j.nome))}<i class="ponto-on ${j.online ? 'on' : ''}" title="${j.online ? 'online' : 'offline'}"></i></span><div class="flex1"><b class="peq">${esc(j.nome)}</b>${j.id === eu.id ? ' <span class="selo">você</span>' : ''}
     <div class="mini fraco">${esc(CAT.papeis[j.papel] || j.papel)}${j.extra.uf ? ' · ' + esc(j.extra.uf) : ''}${j.extra.pais ? ' · ' + esc(j.extra.pais) : ''} · ${j.online ? '<span class="bom">online</span>' : 'offline'}</div></div>
@@ -426,23 +404,21 @@ function vSala() {
       ${eu.anfitriao && pr.faltam.length ? bF('Forçar avanço', 'forcarAvanco', 'btn-mini btn-perigo', 'data-confirmar="Avançar sem esperar? Eventos pendentes dos outros jogadores serão decididos automaticamente."', 'dir') : ''}</div>
       ${UIc.medidor(pr.prontos, pr.total, 'var(--verde)')}<div class="mini fraco">${pr.faltam.length ? 'Aguardando: ' + pr.faltam.map(esc).join(', ') : 'Todos prontos.'}</div></div>` : '';
   const chat = G.mensagens.map((m) => `<div class="msg"><b>${esc(m.autor)}</b>${esc(m.texto)}</div>`).join('') || UIc.vazio('Sem mensagens. Diga olá!', 'chat');
-  const opcoesProp = Object.entries(dc.pautas).map(([k, pa]) => `<optgroup label="${esc(pa.nome)}">${Object.entries(pa.propostas).filter(([, pp]) => !pp.escopos || pp.escopos.includes('nacional')).map(([pk, pp]) => `<option value="${k}:${pk}">${esc(pp.nome)}</option>`).join('')}</optgroup>`).join('');
   const campo = {
     ministro: `<label class="campo">Área<select id="ped-setor">${CAT.setores.map((k) => `<option value="${k}">${CAT.rotulo_setor[k]}</option>`).join('')}</select></label>${bF('Pedir mais orçamento', 'enviarPedido', 'btn-ouro', 'data-tipo="orcamento"', 'grafico')}`,
     parlamentar: `<label class="campo">Emendas (R$ bi)<input type="number" id="ped-valor" min="1" max="100" value="10"></label>${bF('Oferecer apoio por emendas', 'enviarPedido', 'btn-ouro', 'data-tipo="apoio"', 'aperto')}`,
-    lider: `<label class="campo">Propor acordo (reunião com o presidente)<select id="ped-prop">${opcoesProp}</select></label>${bF('Propor acordo', 'enviarPedido', 'btn-ouro', 'data-tipo="reuniao"', 'aperto')}
-      <div class="sep"></div><label class="campo">Outras ações<select id="ped-acao"><option value="melhorar">Aproximação</option><option value="alianca">Aliança militar</option><option value="sancionar">Pedir sanções ao seu país</option></select></label>${bF('Enviar', 'enviarPedido', '', 'data-tipo="acordo"', 'globo')}`,
+    lider: `<label class="campo">Proposta ao presidente<select id="ped-acao"><option value="tratado">Acordo comercial</option><option value="melhorar">Aproximação</option><option value="alianca">Aliança militar</option><option value="sancionar">Pedir sanções ao seu país</option></select></label>${bF('Enviar', 'enviarPedido', 'btn-ouro', 'data-tipo="acordo"', 'globo')}`,
   }[eu.governa ? '' : eu.papel];
-  const detalhe = (p) => [p.payload.valor && bi(p.payload.valor), p.payload.setor && CAT.rotulo_setor[p.payload.setor], p.payload.uf,
+  const detalhe = (p) => [p.payload.valor && bi(p.payload.valor), p.payload.setor && CAT.rotulo_setor[p.payload.setor], p.payload.uf, p.payload.para && 'com ' + p.payload.para,
     p.tipo === 'reuniao' && nomeProp(p.payload.pauta, p.payload.proposta), p.payload.acao].filter(Boolean).map(esc).join(' · ');
   const para = (p) => (p.destino ? G.jogadores.find((j) => j.id === p.destino)?.nome || '' : 'presidente');
   const pedidos = G.pedidos.map((p) => `<div class="jogador-linha"><div class="flex1 peq"><b>${esc(p.autor)}</b> <span class="fraco">→ ${esc(para(p))}</span><div class="mini">${esc(p.nome)}${detalhe(p) ? ' · ' + detalhe(p) : ''}</div></div>
     ${p.status === 'pendente' ? (euDecido(p) && !s.meta.encerrado ? `${bF('Aceitar', 'decidirPedido', 'btn-mini btn-ouro', `data-id="${p.id}" data-ok="1"`)} ${bF('Recusar', 'decidirPedido', 'btn-mini', `data-id="${p.id}" data-ok="0"`)}` : '<span class="selo alerta">pendente</span>') : `<span class="selo ${p.status === 'aprovado' ? 'bom' : 'ruim'}">${p.status === 'aprovado' ? 'aceito' : 'recusado'}</span>`}</div>`).join('')
     || UIc.vazio('Nenhum pedido ainda.', 'pasta');
   const meus = G.mp.propostas_para_mim || [];
-  const propostas = meus.length ? UIc.painel('Propostas de acordo para você', 'aperto', meus.map((a) => `<div class="proposta-card"><b>${esc(a.nome)}</b><div class="mini fraco">De ${esc(a.de)} · ${esc(nomeFormato(a.formato))} · ${esc(efeitosProp(a.pauta, a.proposta))}</div>
+  const propostas = meus.length ? UIc.painel('Propostas de acordo para você', 'aperto', meus.map((a) => `<div class="proposta-card"><b>${esc(a.nome)}</b><div class="mini fraco">De ${esc(a.de)} · ${esc(efeitosProp(a.pauta, a.proposta))}</div>
     <div class="grupo-btn mt">${bF('Aceitar', 'responderLider', 'btn-mini btn-ouro', `data-id="${a.id}" data-ok="1" data-origem="${a.origem ?? ''}"`, 'check')}${bF('Recusar', 'responderLider', 'btn-mini', `data-id="${a.id}" data-ok="0" data-origem="${a.origem ?? ''}"`, 'x')}</div></div>`).join(''), { sub: 'Aceitar assina o acordo para os dois lados' }) : '';
-  const papelTxt = { ministro: 'Peça mais orçamento para sua área.', parlamentar: 'Ofereça apoio no Congresso em troca de emendas.', lider: 'Proponha acordos e responda às propostas do presidente.' }[eu.papel];
+  const papelTxt = { ministro: 'Peça mais orçamento para sua área.', parlamentar: 'Ofereça apoio no Congresso em troca de emendas.', lider: 'Proponha acordos, alianças ou sanções ao presidente.' }[eu.papel];
   const especial = eu.anfitriao ? painelGovernadores() : eu.governa ? painelPresidencia() : '';
   return `<div class="grade g2"><div class="coluna">
     ${UIc.painel('Sala multiplayer', 'link', `<div class="linha entre"><div><div class="rotulo">Código da sala</div><div class="codigo-grande">${G.codigo}</div></div>${bF('Copiar convite', 'copiarLink', 'btn-ouro btn-mini', `data-link="${esc(link)}"`, 'copiar')}</div>

@@ -5,7 +5,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from simulador.data.politica import LEIS, PROPOSTAS  # noqa: E402
-from simulador.engine import acoes, diplomacia, estado as est  # noqa: E402
+from simulador.engine import acoes, estado as est  # noqa: E402
 
 
 def bot(estado, rng):
@@ -34,19 +34,8 @@ def bot(estado, rng):
         ex(estado, "negociar_impeachment", {}, rng)
     if escopo == "nacional" and rng.random() < 0.1:
         ex(estado, "acao_diplomatica", {"acao": "melhorar", "alvo": rng.choice(list(estado["diplomacia"]["entidades"]))}, rng)
-    # diplomacia: reuniões com pauta, respostas a propostas e, às vezes, saída de um acordo
-    d = estado["diplomacia"]
-    if rng.random() < 0.4:
-        pauta = rng.choice(list(diplomacia.PAUTAS))
-        ex(estado, "reuniao_diplomatica", {"alvo": rng.choice(list(d["entidades"])), "formato": rng.choice(list(diplomacia.FORMATOS)),
-                                           "pauta": pauta, "proposta": rng.choice(list(diplomacia.PAUTAS[pauta]["propostas"])),
-                                           "concessao": rng.choice(list(diplomacia.CONCESSOES))}, rng)
-    for prop in list(d.get("propostas", [])):
-        ex(estado, "responder_proposta", {"id": prop["id"], "aceitar": rng.random() < 0.6}, rng)
-    if escopo == "nacional" and rng.random() < 0.05:
-        ex(estado, "cupula_multilateral", {"bloco": "Mercosul", "pauta": "comercio", "proposta": "tarifas"}, rng)
-    if d.get("acordos") and rng.random() < 0.03:
-        ex(estado, "denunciar_acordo", {"id": d["acordos"][0]["id"]}, rng)
+    if estado["diplomacia"].get("acordos") and rng.random() < 0.03:
+        ex(estado, "denunciar_acordo", {"id": estado["diplomacia"]["acordos"][0]["id"]}, rng)
 
 
 def rodar(modo, duracao, rng):
@@ -66,6 +55,9 @@ def rodar(modo, duracao, rng):
         e26 = s["eleicoes"][1]
         assert e26["ano"] == 2026, e26["ano"]
         assert any(c.get("wiki") for c in e26["turno1"]), "2026 deve ter candidatos reais"
+    if modo == "presidente" and s["meta"]["turno"] >= 12:
+        nomes = {h["cupula"] for h in s.get("cupulas_hist", [])}
+        assert {"mercosul", "brics", "onu"} <= nomes, f"cúpulas obrigatórias não aconteceram: {nomes}"
     return s
 
 

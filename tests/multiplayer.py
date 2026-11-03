@@ -1,6 +1,6 @@
 """Testa o fluxo multiplayer pela API (python tests/multiplayer.py).
 
-Anfitrião (presidente) cria a sala; um líder estrangeiro entra e negocia acordos; dois governadores entram,
+Anfitrião (presidente) cria a sala; um líder estrangeiro entra e envia propostas; dois governadores entram,
 cada um com a própria partida estadual, e interagem com o presidente e entre si; o trimestre só avança
 quando todos os jogadores online estão prontos.
 """
@@ -31,22 +31,14 @@ def main():
     assert pk["estado"]["meta"]["ano"] == 2023 and pk["estado"]["meta"]["fase"] == "governo"
     assert [j["online"] for j in pk["jogadores"]] == [True, True]
 
-    # líder -> anfitrião
-    assert c.post(f"/api/jogos/{cod}/pedidos", json={"tipo": "reuniao", "payload": {"pauta": "comercio", "proposta": "tarifas"}}, headers=lider).get_json()["ok"]
+    # líder -> presidente: acordo comercial
+    assert c.post(f"/api/jogos/{cod}/pedidos", json={"tipo": "acordo", "payload": {"acao": "melhorar"}}, headers=lider).get_json()["ok"]
     pid = c.get(f"/api/jogos/{cod}", headers=host).get_json()["pedidos"][0]["id"]
     assert c.post(f"/api/jogos/{cod}/pedidos/{pid}/decidir", json={"aprovar": True}, headers=lider).status_code == 403
     assert c.post(f"/api/jogos/{cod}/pedidos/{pid}/decidir", json={"aprovar": True}, headers=host).get_json()["ok"]
-
-    # anfitrião -> líder
-    r = c.post(f"/api/jogos/{cod}/acao", json={"tipo": "reuniao_diplomatica", "params": {"alvo": "ARG", "formato": "telefonema",
-                                                                                       "pauta": "meio_ambiente", "proposta": "clima"}}, headers=host).get_json()
-    ag = r["estado"]["diplomacia"]["aguardando"]
-    assert len(ag) == 1, r["msg"]
-    assert c.post(f"/api/jogos/{cod}/propostas/{ag[0]['id']}/responder", json={"aceitar": True}, headers=host).status_code == 403
-    assert c.post(f"/api/jogos/{cod}/propostas/{ag[0]['id']}/responder", json={"aceitar": True}, headers=lider).get_json()["ok"]
-
-    acordos = [a["proposta"] for a in c.get(f"/api/jogos/{cod}", headers=lider).get_json()["estado"]["diplomacia"]["acordos"]]
-    assert acordos == ["tarifas", "clima"], acordos
+    # reuniões diplomáticas foram retiradas
+    r = c.post(f"/api/jogos/{cod}/acao", json={"tipo": "reuniao_diplomatica", "params": {"alvo": "ARG", "formato": "telefonema"}}, headers=host).get_json()
+    assert not r["ok"], r
 
     c.post(f"/api/jogos/{cod}/mensagem", json={"texto": "Olá"}, headers=lider)
     assert c.get(f"/api/jogos/{cod}", headers=host).get_json()["mensagens"][-1]["texto"] == "Olá"
@@ -89,14 +81,14 @@ def governadores(c, cod, host, lider):
     assert c.post(f"/api/jogos/{cod}/pedidos/{ped['id']}/decidir", json={"aprovar": True}, headers=host).status_code == 403
     assert c.post(f"/api/jogos/{cod}/pedidos/{ped['id']}/decidir", json={"aprovar": True}, headers=t2).get_json()["ok"]
 
-    # governador -> governador: consórcio decidido pelo outro jogador e válido nos dois estados
-    r = c.post(f"/api/jogos/{cod}/acao", json={"tipo": "reuniao_diplomatica", "params": {"alvo": "BA", "formato": "telefonema",
-                                                                                       "pauta": "seguranca", "proposta": "crime"}}, headers=t1).get_json()
-    prop = c.get(f"/api/jogos/{cod}", headers=t2).get_json()["mp"]["propostas_para_mim"]
-    assert len(prop) == 1, r["msg"]
-    assert c.post(f"/api/jogos/{cod}/propostas/{prop[0]['id']}/responder", json={"aceitar": True, "origem": prop[0]["origem"]}, headers=t2).get_json()["ok"]
-    assert any(a["proposta"] == "crime" for a in c.get(f"/api/jogos/{cod}", headers=t1).get_json()["estado"]["diplomacia"]["acordos"])
-    assert any(a["proposta"] == "crime" for a in c.get(f"/api/jogos/{cod}", headers=t2).get_json()["estado"]["diplomacia"]["acordos"])
+    # governador -> governador: consórcio aceito pelo outro jogador, válido nos dois estados
+    r = c.post(f"/api/jogos/{cod}/pedidos", json={"tipo": "consorcio", "payload": {"governador": g2_id(c, cod, host)}}, headers=t1).get_json()
+    assert r["ok"], r
+    ped = next(p for p in c.get(f"/api/jogos/{cod}", headers=t2).get_json()["pedidos"] if p["tipo"] == "consorcio")
+    assert c.post(f"/api/jogos/{cod}/pedidos/{ped['id']}/decidir", json={"aprovar": True}, headers=host).status_code == 403
+    assert c.post(f"/api/jogos/{cod}/pedidos/{ped['id']}/decidir", json={"aprovar": True}, headers=t2).get_json()["ok"]
+    assert c.get(f"/api/jogos/{cod}", headers=t1).get_json()["estado"]["diplomacia"]["entidades"]["BA"]["tratado"]
+    assert c.get(f"/api/jogos/{cod}", headers=t2).get_json()["estado"]["diplomacia"]["entidades"]["SP"]["tratado"]
 
     # pronto: o trimestre só avança quando todos os online (presidente, 2 governadores e o líder) estão prontos
     turno = lambda t: c.get(f"/api/jogos/{cod}", headers=t).get_json()["estado"]["meta"]["turno"]

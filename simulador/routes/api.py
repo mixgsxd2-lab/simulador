@@ -10,6 +10,7 @@ from ..data.historia import PRESIDENTES, ERAS, GOVERNADORES
 from ..data.politica import PARTIDOS, IDEOLOGIAS, PROPOSTAS, PASTAS, LEIS, CENARIOS, SETORES, ROTULO_SETOR
 from ..db import get_db, transacao, carregar_jogo, salvar_estado, salvar_relatorio, carregar_governos, salvar_governo, tocar
 from ..engine.util import noticia
+from ..data.cupulas import CUPULAS
 from ..engine import acoes, diplomacia, estado as est, multiplayer, visao
 
 bp = Blueprint("api", __name__)
@@ -72,8 +73,8 @@ def catalogo():
         "leis": {k: {kk: vv for kk, vv in v.items() if kk != "efeitos"} for k, v in LEIS.items()},
         "pastas": PASTAS, "cenarios": {k: {"nome": v["nome"], "desc": v["desc"]} for k, v in CENARIOS.items()},
         "setores": SETORES, "rotulo_setor": ROTULO_SETOR, "papeis": multiplayer.PAPEIS,
-        "diplomacia": {"formatos": diplomacia.FORMATOS, "concessoes": diplomacia.CONCESSOES, "interesse": diplomacia.INTERESSE,
-                       "pautas": {k: {"nome": v["nome"], "ico": v["ico"], "propostas": {pk: {kk: vv for kk, vv in pv.items() if kk not in ("imediato", "tri")}
+        "cupulas": {k: {"nome": v["nome"], "quando": v["quando"], "trimestres": v.get("trimestres", []), "datas": v.get("datas")} for k, v in CUPULAS.items()},
+        "diplomacia": {"pautas": {k: {"nome": v["nome"], "ico": v["ico"], "propostas": {pk: {kk: vv for kk, vv in pv.items() if kk not in ("imediato", "tri")}
                                                                                           | {"efeitos": _efeitos_txt(pv)} for pk, pv in v["propostas"].items()}}
                                   for k, v in diplomacia.PAUTAS.items()}},
         "presidentes": PRESIDENTES, "eras": ERAS, "governadores": {uf: {"nome": n, "partido": p} for uf, (n, p) in GOVERNADORES.items()},
@@ -500,6 +501,13 @@ def criar_pedido(codigo):
             return erro(msg)
         govs = carregar_governos(db, codigo)
         destino = None
+        if tipo == "consorcio":  # governador propõe a outro governador
+            try:
+                destino = int(payload.get("governador"))
+            except (TypeError, ValueError):
+                destino = None
+            if destino not in govs or destino == jog["id"]:
+                return erro("Escolha outro governador.")
         if papel == "presidente":  # o presidente se dirige a um governador
             try:
                 destino = int(payload.get("governador"))
@@ -520,14 +528,16 @@ def criar_pedido(codigo):
             payload = {"setor": payload["setor"] if payload.get("setor") in SETORES else "saude"}
         elif tipo == "convenio":
             payload = {"setor": payload["setor"], "valor": float(payload["valor"])}
-        elif tipo in ("forca_nacional", "apoio_politico", "pede_apoio"):
+        elif tipo in ("forca_nacional", "apoio_politico", "pede_apoio", "consorcio"):
             payload = {}
         else:
             payload = {"valor": float(payload["valor"])}
         if govs.get(jog["id"]):
             payload["uf"] = govs[jog["id"]]["meta"]["uf"]
-        if destino:
+        if destino and tipo != "consorcio":
             payload["uf"] = govs[destino]["meta"]["uf"]
+        if tipo == "consorcio":
+            payload["para"] = govs[destino]["meta"]["uf"]
         if tipo == "verba":  # verba do presidente: vale na hora, sem precisar de aceite
             gov = govs[destino]
             msg = multiplayer.aplicar(estado, {"tipo": tipo, "autor": gov["jogador"]["nome"], "payload": payload}, random.Random(), True, gov)
@@ -558,6 +568,15 @@ def decidir_pedido(codigo, pid):
         if not decide:
             return erro("Esse pedido não é para você.", 403)
         govs = carregar_governos(db, codigo)
+        if ped["tipo"] == "consorcio":
+            ga, gb = govs.get(ped["autor_id"]), govs.get(ped["destino"])
+            if not ga or not gb:
+                return erro("Governador não encontrado.", 404)
+            msg = multiplayer.consorcio(ga, gb, aprovar)
+            db.execute("UPDATE pedidos SET status=? WHERE id=?", ("aprovado" if aprovar else "negado", pid))
+            salvar_governo(db, codigo, ped["autor_id"], ga)
+            salvar_governo(db, codigo, ped["destino"], gb)
+            return _resposta(db, codigo, jog, ok=True, msg=msg)
         gid = ped["destino"] or ped["autor_id"]
         gov = govs.get(gid)
         nome = gov["jogador"]["nome"] if gov and ped["destino"] else ped["autor"]

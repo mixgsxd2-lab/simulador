@@ -75,6 +75,7 @@ def _turno_governo(estado, rng):
     eventos.sortear(estado, rng)
     _tempo(m)
     m["turno_mandato"] += 1
+    eventos.cupulas_obrigatorias(estado, rng)  # ONU, BRICS, Mercosul: participação obrigatória
     ap = congresso.apoio(estado, "baixa")
     estado["capital"] = int(min(8, estado["capital"] + 3 + int(estado["popularidade"] // 30) + (1 if ap > 50 else 0)))
     estado["justica"]["impeachment"]["risco"] = estado["justica"]["impeachment"]["risco"]
@@ -189,5 +190,6 @@ def _encerrar(estado, resultado):
     m["resultado"] = resultado
     m["fase"] = "fim"
     estado["campanha"] = {"ativa": False}
+    estado["evento"], estado["eventos_fila"] = None, []
     estado["relatorio"] = relatorio.gerar(estado)
     return True, "A partida terminou."

@@ -84,7 +84,7 @@ python tools/gerar_mapas.py world50.json br.json
 - **Personagem**: rosto, pele, olhos, cabelo, barba, idade (mínimo constitucional de 35 anos para Presidente e 30 para Governador), trajes, gravata, óculos, acessórios e faixa presidencial.
 - Cada trimestre dá **capital político**, gasto em leis, nomeações, negociações e diplomacia.
 - **Leis**: 44 projetos (economia, social, infraestrutura, tecnologia, meio ambiente, justiça e defesa). Ordinárias exigem maioria; emendas, 3/5.
-- **Diplomacia**: reuniões em quatro formatos (telefonema, chanceleres, cúpula presidencial, visita de Estado) com pautas de economia, comércio, segurança e meio ambiente. Cada proposta mostra a chance de aceite (relação, interesse do bloco, prestígio, ministro e concessões). Acordos geram efeitos a cada trimestre; outros países enviam propostas que você aceita ou recusa; há cúpulas de blocos (Mercosul, BRICS, UE…).
+- **Diplomacia**: missões, acordos comerciais, alianças, sanções, guerras e ONU. **Cúpulas obrigatórias** (modo presidente): Mercosul (2º e 4º trimestres), BRICS e Assembleia Geral da ONU (3º trimestre) e COP30 em Belém (4º trimestre de 2025). Cada cúpula vira um evento obrigatório em que o presidente escolhe a posição do Brasil; as escolhas mudam a relação com os blocos, o prestígio na ONU e a economia (catálogo em `data/cupulas.py`).
 - **Tutorial**: abre na primeira partida e pode ser revisto pelo botão Tutorial; o menu tem a tela **Como jogar**.
 - Mandato de 16 trimestres, no máximo 2 consecutivos. RUN **curta** (1 mandato), **média** (2) ou **longa** (2 + eleição do sucessor).
 - **Multiplayer**: quem cria a sala é o **presidente**. Quem entra como **governador** escolhe um estado, partido e ideologia e joga a própria partida estadual (orçamento, Assembleia, leis, eventos e eleição), com a economia federal ligada à do presidente. Presidente e governadores interagem o tempo todo: o presidente envia verbas, propõe convênios e pede apoio político; os governadores pedem repasses, programas federais e Força Nacional, oferecem apoio e fecham consórcios entre si (o outro jogador aceita ou recusa). Também dá para entrar como ministro, parlamentar ou líder de outro país.
@@ -95,5 +95,5 @@ python tools/gerar_mapas.py world50.json br.json
 - Novas leis: `simulador/data/politica.py` (`LEIS`). Novos eventos: `simulador/data/eventos.py`. Novos cenários: `CENARIOS`.
 - Novas ações: função em `engine/acoes.py` + entrada em `HANDLERS` + botão em `static/js/views.js`.
 - Novos componentes visuais: `UIc` em `static/js/core.js`.
-- Novos acordos diplomáticos: `PAUTAS` em `engine/diplomacia.py`.
+- Novas cúpulas obrigatórias: `CUPULAS` em `data/cupulas.py`.
 - Testes: `python tests/simular.py` (motor) e `python tests/multiplayer.py` (API multiplayer).

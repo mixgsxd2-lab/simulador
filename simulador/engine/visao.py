@@ -29,7 +29,6 @@ def derivados(estado):
     e = estado["economia"]
     diplomacia._d(estado)  # partidas antigas: garante as listas de acordos/propostas
     return {
-        "diplo_base": {cod: diplomacia.chance_base(estado, cod) for cod in estado["diplomacia"]["entidades"]},
         "apoio_baixa": congresso.apoio(estado, "baixa"), "apoio_alta": congresso.apoio(estado, "alta"),
         "partidos": partidos, "grupos": grupos(estado), "carga": round(economia.carga(estado) * 100, 1),
         "ano_idade": 35 + estado["meta"]["turno"] // 4,

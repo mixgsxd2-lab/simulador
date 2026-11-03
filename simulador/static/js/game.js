@@ -40,7 +40,7 @@ function avisos(antigo, novo) {
   });
   const novas = (novo.mp.propostas_para_mim || []).length - (antigo.mp?.propostas_para_mim || []).length;
   if (novas > 0) toast('Você recebeu uma proposta de acordo. Veja a aba Sala.');
-  if (novo.estado.meta.turno !== antigo.estado.meta.turno) toast(`Todos prontos: ${novo.estado.meta.ano} · ${novo.estado.meta.trimestre}º trimestre.`);
+  if (novo.estado.meta.turno !== antigo.estado.meta.turno && antigo.mp.pronto.total > 1) toast(`Todos prontos: ${novo.estado.meta.ano} · ${novo.estado.meta.trimestre}º trimestre.`);
 }
 function aceitar(r) {
   const mudou = !G || r.versao !== G.versao || r.mensagens.length !== G.mensagens.length || JSON.stringify(r.jogadores) !== JSON.stringify(G.jogadores)
@@ -153,7 +153,8 @@ function modais() {
   if (!html && G.eu.governa && !guardar.get('sim_tutorial') && typeof Tutorial !== 'undefined' && !Tutorial.ativo) Tutorial.iniciar();
 }
 function modalEvento(ev) {
-  return `<div class="veu"><div class="vidro modal evento-modal" role="dialog" aria-modal="true"><span class="selo alerta tag-ev">${icone('raio', 'p')} Evento · simulado</span>
+  const tag = ev.obrigatorio ? `<span class="selo ouro tag-ev">${icone('globo', 'p')} Cúpula internacional · participação obrigatória</span>` : `<span class="selo alerta tag-ev">${icone('raio', 'p')} Evento · simulado</span>`;
+  return `<div class="veu"><div class="vidro modal evento-modal" role="dialog" aria-modal="true">${tag}
     <h2>${esc(ev.titulo)}</h2><p class="suave">${esc(ev.texto)}</p>
     ${G.eu.governa ? ev.escolhas.map((c, i) => `<button type="button" class="opcao-ev" data-a="responder_evento" data-p='{"escolha":${i}}'><span class="n">${i + 1}</span><span class="flex1"><b>${esc(c.label)}</b><div class="mini fraco">${esc(c.desc)}</div></span>${icone('dir', 'p')}</button>`).join('')
     : `<div class="vazio"><span class="spinner"></span>Aguardando a decisão do anfitrião…</div><div class="linha" style="justify-content:flex-end"><button type="button" class="btn btn-mini" data-fn="fecharEvento">Fechar</button></div>`}</div></div>`;
@@ -254,16 +255,7 @@ const FN = {
   },
   decidirPedido(el) { enviar(`/api/jogos/${CODIGO}/pedidos/${el.dataset.id}/decidir`, { aprovar: el.dataset.ok === '1' }); },
   responderLider(el) { enviar(`/api/jogos/${CODIGO}/propostas/${el.dataset.id}/responder`, { aceitar: el.dataset.ok === '1', origem: el.dataset.origem ? Number(el.dataset.origem) : null }); },
-  reuSet(el) {
-    UI.reu[el.dataset.k] = el.dataset.v;
-    if (el.dataset.k === 'pauta') UI.reu.proposta = null;
-    const painel = $('#painel-ent');
-    if (painel) painel.innerHTML = painelEntidade(); else render(false);
-  },
-  convocarCupula() {
-    const [pauta, proposta] = ($('#cup-prop')?.value || ':').split(':');
-    agir('cupula_multilateral', { bloco: $('#cup-bloco')?.value, pauta, proposta });
-  },
+  propConsorcio(el) { enviar(`/api/jogos/${CODIGO}/pedidos`, { tipo: 'consorcio', payload: { governador: el.dataset.id } }); },
   fecharEvento() { marcar('ev', G.estado.evento?.titulo || ''); modais(); },
   abrirTutorial() { Tutorial.iniciar(true); },
 };

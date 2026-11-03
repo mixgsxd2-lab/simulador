@@ -19,16 +19,16 @@ PAPEIS = {
 }
 # pedidos que cada papel pode enviar
 TIPOS_POR_PAPEL = {
-    "governador": {"repasse", "obra", "forca_nacional", "apoio_politico"},
+    "governador": {"repasse", "obra", "forca_nacional", "apoio_politico", "consorcio"},
     "presidente": {"verba", "convenio", "pede_apoio"},
-    "ministro": {"orcamento"}, "parlamentar": {"apoio"}, "lider": {"acordo", "reuniao"},
+    "ministro": {"orcamento"}, "parlamentar": {"apoio"}, "lider": {"acordo"},
 }
 COM_VALOR = {"repasse", "apoio", "verba", "convenio"}
 COM_SETOR = {"obra", "convenio"}
 NOMES_PEDIDO = {"repasse": "Repasse de verba", "obra": "Obra/programa federal", "forca_nacional": "Força Nacional",
                 "apoio_politico": "Oferta de apoio político", "verba": "Envio de verba", "convenio": "Convênio federal",
                 "pede_apoio": "Pedido de apoio político", "orcamento": "Mais orçamento", "apoio": "Apoio por emendas",
-                "acordo": "Ação diplomática", "reuniao": "Proposta de acordo"}
+                "acordo": "Ação diplomática", "reuniao": "Proposta de acordo", "consorcio": "Consórcio entre estados"}
 
 
 def validar(papel, tipo, payload):
@@ -103,9 +103,13 @@ def avancar_todos(pres, govs, rng):
     automaticamente (só acontece quando o anfitrião força o avanço)."""
     jogos = [pres] + list(govs)
     for g in jogos:
-        if g["evento"] and not g["meta"]["encerrado"]:
+        for _ in range(10):  # pode haver vários (cúpulas obrigatórias na fila)
+            if not g["evento"] or g["meta"]["encerrado"]:
+                break
             titulo = g["evento"]["titulo"]
-            eventos.responder(g, 0, rng)
+            ok, _ = eventos.responder(g, 0, rng)
+            if not ok:
+                g["evento"] = None
             noticia(g, f"Sem resposta a tempo, a assessoria decidiu sobre '{titulo}'.", "info")
     msg = "Trimestre concluído."
     if not pres["meta"]["encerrado"]:
@@ -115,6 +119,27 @@ def avancar_todos(pres, govs, rng):
             continue
         vincular_macro(g, pres)
         acoes.executar(g, "avancar_turno", {}, rng)
+    return msg
+
+
+def consorcio(gov_a, gov_b, aprovado):
+    """Consórcio entre dois estados governados por jogadores (proposto por A, decidido por B)."""
+    a, b = gov_a["meta"], gov_b["meta"]
+    xa, xb = gov_a["diplomacia"]["entidades"].get(b["uf"]), gov_b["diplomacia"]["entidades"].get(a["uf"])
+    if not aprovado:
+        for x in (xa, xb):
+            if x:
+                x["rel"] = round(clamp(x["rel"] - 2, 0, 100), 2)
+        msg = f"{gov_b['jogador']['nome']} ({b['rotulo']}) recusou o consórcio proposto por {gov_a['jogador']['nome']} ({a['rotulo']})."
+    else:
+        for g, x in ((gov_a, xa), (gov_b, xb)):
+            if x:
+                x["tratado"] = True
+                x["rel"] = round(clamp(x["rel"] + 10, 0, 100), 2)
+            aplicar_efeitos(g, {"economia.tendencia": 0.05, "setores.infraestrutura": 2, "popularidade": 0.5})
+        msg = f"Consórcio firmado entre {a['rotulo']} e {b['rotulo']}: obras e serviços compartilhados."
+    for g in (gov_a, gov_b):
+        noticia(g, msg, "bom" if aprovado else "ruim")
     return msg
 
 

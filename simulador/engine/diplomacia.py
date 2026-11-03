@@ -160,22 +160,9 @@ def _onu(estado, ac, rng):
 
 
 # =====================================================================================
-# Reuniões diplomáticas, pautas, acordos e propostas (aceitas ou rejeitadas pelos países)
+# Acordos internacionais (catálogo de pautas). As reuniões diplomáticas foram retiradas do jogo;
+# os acordos ainda vêm de pedidos de líderes estrangeiros no multiplayer e de partidas antigas.
 # =====================================================================================
-# Formatos de reunião. "capital" e "custo" (R$ bi) são pagos por quem convoca; "bonus" soma à chance de acordo.
-FORMATOS = {
-    "telefonema": {"nome": "Telefonema", "desc": "Conversa rápida entre chefes de governo.", "capital": 1, "custo": 0, "bonus": -0.05, "rel": 2},
-    "chanceleres": {"nome": "Reunião de chanceleres", "desc": "Seu ministro das Relações Exteriores negocia com o representante estrangeiro.", "capital": 1, "custo": 2, "bonus": 0.0, "rel": 3},
-    "cupula": {"nome": "Cúpula presidencial", "desc": "Encontro entre os chefes de Estado.", "capital": 2, "custo": 5, "bonus": 0.08, "rel": 5},
-    "visita": {"nome": "Visita de Estado", "desc": "Viagem oficial com comitiva e grande repercussão.", "capital": 3, "custo": 15, "bonus": 0.15, "rel": 8},
-}
-
-CONCESSOES = {
-    "nenhuma": {"nome": "Sem concessões", "bonus": 0.0, "custo": 0, "efeitos": {}},
-    "moderada": {"nome": "Concessões moderadas", "bonus": 0.10, "custo": 10, "efeitos": {}},
-    "generosa": {"nome": "Concessões generosas", "bonus": 0.20, "custo": 30, "efeitos": {"popularidade": -1}},
-}
-
 # Pautas e propostas de acordo. "dif" reduz a chance de aceite; "imediato" aplica ao assinar; "tri" aplica a cada trimestre.
 PAUTAS = {
     "economia": {"nome": "Economia e investimentos", "ico": "moedas", "propostas": {
@@ -199,29 +186,6 @@ PAUTAS = {
         "energia_limpa": {"nome": "Parceria em energia limpa", "dif": 0.05, "imediato": {"setores.infraestrutura": 2, "setores.meio_ambiente": 2, "economia.tendencia": 0.05}, "tri": {}},
     }},
 }
-
-# Interesse de cada bloco por pauta (soma à chance de aceite).
-INTERESSE = {
-    "Mercosul": {"comercio": 0.15, "seguranca": 0.10, "economia": 0.05},
-    "América Latina": {"comercio": 0.10, "seguranca": 0.10},
-    "União Europeia": {"meio_ambiente": 0.15, "economia": 0.05, "comercio": -0.05},
-    "União Europeia / CPLP": {"meio_ambiente": 0.10, "economia": 0.10, "comercio": 0.05},
-    "Ocidente": {"meio_ambiente": 0.10, "economia": 0.10, "seguranca": 0.05},
-    "BRICS": {"economia": 0.15, "comercio": 0.10, "meio_ambiente": -0.05},
-    "Ásia": {"comercio": 0.10, "economia": 0.10},
-    "Oriente Médio": {"economia": 0.10, "meio_ambiente": -0.10},
-    "África": {"economia": 0.10, "seguranca": 0.05},
-    "Eurásia": {"comercio": 0.05},
-    "Leste Europeu": {"seguranca": 0.10},
-}
-
-CONTRAPARTIDAS = [
-    None,
-    {"txt": "pede uma contrapartida de R$ 10 bi", "efeitos": {"economia.caixa": -10}},
-    {"txt": "pede redução de 1 ponto na tarifa de importação", "efeitos": {"impostos.importacao": -1}},
-    {"txt": "pede apoio em votação na ONU (custo de imagem)", "efeitos": {"sociedade.midia": -2}},
-]
-
 
 def _d(estado):
     d = estado["diplomacia"]
@@ -253,33 +217,6 @@ def proposta_valida(estado, x, pauta, prop_id):
     return prop, None
 
 
-def chance_base(estado, cod):
-    """Parte da chance de aceite que depende só do país (o cliente soma pauta, formato, concessão e dificuldade)."""
-    d = _d(estado)
-    x = d["entidades"][cod]
-    if x["guerra"]:
-        return -1.0
-    m = estado["ministros"].get("relacoes_exteriores")
-    comp = m["competencia"] if m else 40
-    turno = estado["meta"]["turno"]
-    recusas = sum(1 for r in d["reunioes"] if r["cod"] == cod and r.get("aceito") is False and turno - r["turno"] < 3)
-    b = 0.15 + (x["rel"] - 50) / 100 * 1.2 + (d["onu"] - 50) / 250 + (comp - 50) / 300 - recusas * 0.08
-    if x["sancao"]:
-        b -= 0.5
-    return round(b, 3)
-
-
-def chance(estado, cod, formato, pauta, prop_id, concessao="nenhuma"):
-    x = _d(estado)["entidades"][cod]
-    base = chance_base(estado, cod)
-    if base <= -1:
-        return 0.0
-    prop = PAUTAS[pauta]["propostas"][prop_id]
-    c = (base + INTERESSE.get(x["bloco"], {}).get(pauta, 0) + FORMATOS[formato]["bonus"]
-         + CONCESSOES[concessao]["bonus"] - prop["dif"])
-    return round(clamp(c, 0.03, 0.95), 3)
-
-
 def _assinar(estado, x, pauta, prop_id, origem):
     d = _d(estado)
     prop = PAUTAS[pauta]["propostas"][prop_id]
@@ -291,98 +228,6 @@ def _assinar(estado, x, pauta, prop_id, origem):
         x["tratado"] = True
     x["rel"] = round(clamp(x["rel"] + 4, 0, 100), 2)
     return acordo
-
-
-def reuniao(estado, cod, formato, pauta=None, prop_id=None, concessao="nenhuma", rng=None):
-    """Reunião bilateral convocada pelo jogador. Retorna (ok, msg, resultado). Custos de capital: chamador."""
-    d = _d(estado)
-    x = d["entidades"].get(cod)
-    if not x:
-        return False, "País inválido.", None
-    if formato not in FORMATOS:
-        return False, "Formato de reunião inválido.", None
-    if concessao not in CONCESSOES:
-        concessao = "nenhuma"
-    if x["guerra"]:
-        return False, f"Estamos em guerra com {x['nome']}: negocie a paz primeiro.", None
-    turno = estado["meta"]["turno"]
-    if any(r["cod"] == cod and r["turno"] == turno for r in d["reunioes"]):
-        return False, f"Já houve uma reunião com {x['nome']} neste trimestre.", None
-    prop = None
-    if pauta or prop_id:
-        prop, erro = proposta_valida(estado, x, pauta, prop_id)
-        if erro:
-            return False, erro, None
-    f = FORMATOS[formato]
-    gastar_ou_receber(estado, -(f["custo"] + (CONCESSOES[concessao]["custo"] if prop else 0)))
-    if formato == "visita":
-        aplicar_efeitos(estado, {"popularidade": 1, "sociedade.midia": 1})
-    x["rel"] = round(clamp(x["rel"] + f["rel"], 0, 100), 2)
-    reg = {"cod": cod, "pais": x["nome"], "formato": formato, "pauta": pauta, "proposta": prop_id, "turno": turno,
-           "ano": estado["meta"]["ano"], "tri": estado["meta"]["trimestre"], "aceito": None}
-    d["reunioes"].insert(0, reg)
-    del d["reunioes"][30:]
-    if not prop:
-        msg = f"{f['nome']} com {x['nome']}: as relações melhoraram."
-        noticia(estado, msg, "info")
-        return True, msg, reg
-    if x.get("jogador"):  # país controlado por outro jogador: ele decide
-        d["aguardando"].append({"id": _novo_id(d), "cod": cod, "pauta": pauta, "proposta": prop_id, "nome": prop["nome"],
-                                "formato": formato, "concessao": concessao, "turno": turno})
-        reg["aceito"] = None
-        msg = f"Proposta '{prop['nome']}' enviada a {x['jogador']} ({x['nome']}). Aguardando resposta."
-        noticia(estado, msg, "info")
-        return True, msg, reg
-    aplicar_efeitos(estado, CONCESSOES[concessao]["efeitos"])
-    p = chance(estado, cod, formato, pauta, prop_id, concessao)
-    reg["chance"] = p
-    rng = rng or __import__("random").Random()
-    if rng.random() < p:
-        _assinar(estado, x, pauta, prop_id, "reuniao")
-        reg["aceito"] = True
-        msg = f"{x['nome']} aceitou: '{prop['nome']}' assinado durante {f['nome'].lower()}."
-        noticia(estado, msg, "bom")
-        return True, msg, reg
-    reg["aceito"] = False
-    x["rel"] = round(clamp(x["rel"] - 2, 0, 100), 2)
-    msg = f"{x['nome']} rejeitou a proposta '{prop['nome']}'."
-    noticia(estado, msg, "ruim")
-    return True, msg, reg
-
-
-def cupula_bloco(estado, bloco, pauta, prop_id, rng):
-    """Cúpula multilateral: cada membro do bloco aceita ou rejeita a proposta. Retorna (ok, msg)."""
-    d = _d(estado)
-    membros = [x for x in d["entidades"].values() if x["bloco"] == bloco and not x["guerra"]]
-    if len(membros) < 2:
-        return False, "Bloco inválido."
-    if prop_id not in PAUTAS.get(pauta, {}).get("propostas", {}):
-        return False, "Pauta ou proposta inválida."
-    gastar_ou_receber(estado, -10)
-    aceitos, recusas = [], []
-    for x in membros:
-        if x.get("jogador"):
-            continue
-        prop, erro = proposta_valida(estado, x, pauta, prop_id)
-        if erro:
-            continue
-        x["rel"] = round(clamp(x["rel"] + 2, 0, 100), 2)
-        if rng.random() < chance(estado, x["cod"], "cupula", pauta, prop_id):
-            _assinar(estado, x, pauta, prop_id, "cupula")
-            aceitos.append(x["nome"])
-        else:
-            recusas.append(x["nome"])
-    turno = estado["meta"]["turno"]
-    d["reunioes"].insert(0, {"cod": None, "pais": f"Cúpula: {bloco}", "formato": "cupula", "pauta": pauta, "proposta": prop_id, "turno": turno,
-                             "ano": estado["meta"]["ano"], "tri": estado["meta"]["trimestre"], "aceito": bool(aceitos),
-                             "aceitos": aceitos, "recusas": recusas})
-    del d["reunioes"][30:]
-    if aceitos:
-        aplicar_efeitos(estado, {"diplomacia.onu": 1})
-    nome = PAUTAS[pauta]["propostas"][prop_id]["nome"]
-    msg = f"Cúpula {bloco} — '{nome}': aderiram {', '.join(aceitos) or 'ninguém'}" + (f"; recusaram {', '.join(recusas)}." if recusas else ".")
-    noticia(estado, msg, "bom" if aceitos else "ruim")
-    return True, msg
 
 
 def denunciar(estado, acordo_id):
@@ -444,7 +289,6 @@ def resposta_lider(estado, aguardando_id, aceitar):
         msg = f"{x['jogador'] or x['nome']} ({x['nome']}) rejeitou '{a['nome']}'."
         noticia(estado, msg, "ruim")
         return True, msg
-    aplicar_efeitos(estado, CONCESSOES.get(a.get("concessao"), CONCESSOES["nenhuma"])["efeitos"])
     _assinar(estado, x, a["pauta"], a["proposta"], "reuniao")
     msg = f"{x['jogador'] or x['nome']} ({x['nome']}) aceitou '{a['nome']}'."
     noticia(estado, msg, "bom")
@@ -464,7 +308,8 @@ def acordo_direto(estado, cod, pauta, prop_id, origem="lider"):
 
 
 def passo_acordos(estado, rng):
-    """Efeitos trimestrais dos acordos, propostas que vencem e novas propostas de outros países."""
+    """Efeitos trimestrais dos acordos já assinados e vencimento de propostas antigas.
+    (As reuniões diplomáticas foram retiradas: os países não enviam mais propostas novas.)"""
     d = _d(estado)
     for a in d["acordos"]:
         prop = PAUTAS[a["pauta"]]["propostas"][a["proposta"]]
@@ -481,22 +326,3 @@ def passo_acordos(estado, rng):
             if x:
                 x["rel"] = round(clamp(x["rel"] - 2, 0, 100), 2)
                 noticia(estado, f"A proposta de {x['nome']} expirou sem resposta.", "info")
-    if len(d["propostas"]) >= 3 or rng.random() > 0.4:
-        return
-    cands = [x for x in d["entidades"].values() if x["rel"] >= 40 and not x["guerra"] and not x["sancao"] and not x.get("jogador")]
-    if not cands:
-        return
-    x = rng.choices(cands, [x["rel"] for x in cands])[0]
-    interesses = INTERESSE.get(x["bloco"], {})
-    pautas = list(PAUTAS)
-    pauta = rng.choices(pautas, [1 + 4 * max(0, interesses.get(p, 0)) for p in pautas])[0]
-    opcoes = [k for k in PAUTAS[pauta]["propostas"] if proposta_valida(estado, x, pauta, k)[0]
-              and not any(p["cod"] == x["cod"] and p["proposta"] == k for p in d["propostas"])]
-    if not opcoes:
-        return
-    k = rng.choice(opcoes)
-    contra = rng.choice(CONTRAPARTIDAS)
-    nome = PAUTAS[pauta]["propostas"][k]["nome"]
-    d["propostas"].append({"id": _novo_id(d), "cod": x["cod"], "pais": x["nome"], "pauta": pauta, "proposta": k, "nome": nome,
-                           "contrapartida": contra, "turno": turno, "expira": turno + 2})
-    noticia(estado, f"{x['nome']} propõe: '{nome}'. Responda na aba Diplomacia.", "evento")
