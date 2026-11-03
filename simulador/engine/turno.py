@@ -129,7 +129,8 @@ def _resolver_eleicao(estado, rng, tipo):
         c["boost"] = round(c["boost"] + 2 * cumpridas - 2 * (len(itens) - cumpridas), 2)
     res = eleicoes.rodar_eleicao(estado, rng)
     res["tipo"] = tipo
-    res["ano"] = m["ano"]
+    # a votação acontece no trimestre que acabou de terminar (outubro); a posse é no ano seguinte
+    res["ano"] = m["ano"] - 1 if m["trimestre"] == 1 else m["ano"]
     estado["eleicoes"].append(res)
     c["ativa"] = False
     quem = "Você" if tipo != "sucessor" else "Seu sucessor"

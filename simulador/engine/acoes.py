@@ -229,6 +229,53 @@ def acao_diplomatica(estado, p, rng):
     return ok, msg
 
 
+def reuniao_diplomatica(estado, p, rng):
+    formato = p.get("formato")
+    if formato not in diplomacia.FORMATOS:
+        return False, "Formato de reunião inválido."
+    custo = diplomacia.FORMATOS[formato]["capital"]
+    if estado["capital"] < custo:
+        return False, f"Capital político insuficiente (precisa de {custo})."
+    ok, msg, _ = diplomacia.reuniao(estado, p.get("alvo"), formato, p.get("pauta") or None, p.get("proposta") or None,
+                                    p.get("concessao") or "nenhuma", rng)
+    if ok:
+        estado["capital"] -= custo
+    return ok, msg
+
+
+def cupula_multilateral(estado, p, rng):
+    if estado["meta"]["escopo"] != "nacional":
+        return False, "Cúpulas de blocos existem apenas no modo presidente."
+    if estado["capital"] < 3:
+        return False, "Capital político insuficiente (precisa de 3)."
+    ok, msg = diplomacia.cupula_bloco(estado, p.get("bloco"), p.get("pauta"), p.get("proposta"), rng)
+    if ok:
+        estado["capital"] -= 3
+    return ok, msg
+
+
+def responder_proposta(estado, p, rng):
+    try:
+        pid = int(p.get("id"))
+    except (TypeError, ValueError):
+        return False, "Proposta inválida."
+    return diplomacia.responder_proposta(estado, pid, bool(p.get("aceitar")))
+
+
+def denunciar_acordo(estado, p, rng):
+    try:
+        aid = int(p.get("id"))
+    except (TypeError, ValueError):
+        return False, "Acordo inválido."
+    erro = _cap(estado, 1)
+    if erro:
+        return False, erro
+    ok, msg = diplomacia.denunciar(estado, aid)
+    if not ok:
+        estado["capital"] += 1
+    return ok, msg
+
+
 def pedir_repasse(estado, p, rng):
     if estado["meta"]["escopo"] != "estadual":
         return False, "Indisponível."
@@ -281,6 +328,7 @@ def encerrar_run(estado, p, rng):
 HANDLERS = {f.__name__: f for f in (
     ajustar_impostos, ajustar_orcamento, pressionar_bc, nomear_ministro, demitir_ministro, propor_lei, negociar,
     responder_investigacao, pressionar_stf, indicar_stf, publicidade, negociar_impeachment, acao_diplomatica,
+    reuniao_diplomatica, cupula_multilateral, responder_proposta, denunciar_acordo,
     pedir_repasse, alinhar_federal, campanha, responder_evento, avancar_turno, encerrar_run)}
 
 # ações permitidas durante a campanha inicial (antes da posse)

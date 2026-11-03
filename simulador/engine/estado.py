@@ -66,10 +66,13 @@ def novo_jogo(cfg):
     if modo == "governador" and uf not in ESTADOS_POR_UF:
         raise ValueError("Estado inválido.")
 
+    # Ponto de partida: janeiro de 2023, posse após a eleição de 2022 (indicadores próximos aos reais do fim de 2022).
+    macro = {"crescimento": 2.0, "inflacao": 4.5, "selic": 10.5, "cambio": 5.2}
     if escopo == "nacional":
-        pib, pop_m, tend, tb, ta = 10000.0, 215.0, 2.0, 513, 81
-        divida_pib, desemp = 75.0, 8.5
+        pib, pop_m, tend, tb, ta = 10000.0, 203.0, 2.0, 513, 81  # PIB ~R$ 10 tri; Censo 2022: 203 mi
+        divida_pib, desemp = 72.0, 8.1
         obrig, rotulo = 0.64, "Brasil"
+        macro = {"crescimento": 2.9, "inflacao": 5.8, "selic": 13.75, "cambio": 5.25}
     else:
         est = ESTADOS_POR_UF[uf]
         pib, pop_m = float(est["pib"]), est["pop"]
@@ -80,12 +83,14 @@ def novo_jogo(cfg):
 
     estado = {
         "meta": {"modo": modo, "escopo": escopo, "duracao": cfg["duracao"], "uf": uf, "rotulo": rotulo, "cenario": cenario,
-                 "turno": 0, "ano": 2026, "trimestre": 1, "mandato": 0, "turno_mandato": 0, "fase": "campanha",
+                 "turno": 0, "ano": 2023, "trimestre": 1, "mandato": 0, "turno_mandato": 0, "fase": "campanha",
                  "max_mandatos": DURACOES[cfg["duracao"]], "encerrado": False, "resultado": None, "eventos_total": 0,
-                 "populacao_m": pop_m, "antecessor": ("{} ({})".format(*GOVERNADORES[uf]) if uf else "Luiz Inácio Lula da Silva (PT)")},
+                 "populacao_m": pop_m, "antecessor": None if uf else "Jair Bolsonaro (PL)",
+                 # quem venceu de fato em 2022 (o jogador ocupa esse lugar na simulação)
+                 "substitui": ("{} ({})".format(*GOVERNADORES[uf]) if uf else "Luiz Inácio Lula da Silva (PT)")},
         "jogador": jogador, "popularidade": 45.0, "capital": 5,
-        "economia": {"pib_bi": pib, "crescimento": 2.0, "inflacao": 4.5, "desemprego": round(desemp, 2), "selic": 10.5,
-                     "divida_pib": round(divida_pib, 2), "divida_bi": pib * divida_pib / 100, "caixa": pib * 0.02, "cambio": 5.2,
+        "economia": {"pib_bi": pib, "crescimento": macro["crescimento"], "inflacao": macro["inflacao"], "desemprego": round(desemp, 2), "selic": macro["selic"],
+                     "divida_pib": round(divida_pib, 2), "divida_bi": pib * divida_pib / 100, "caixa": pib * 0.02, "cambio": macro["cambio"],
                      "confianca": 50.0, "tendencia": round(tend, 3), "choque": 0.0, "choque_inf": 0.0, "rev_ref": 1.0,
                      "receita": 0, "despesa": 0, "juros": 0, "resultado": 0, "obrigatorias": 0, "discricionarias": 0, "deficit_pib": 0},
         "impostos": {"renda": 15.0, "empresas": 25.0, "consumo": 18.0, "importacao": 12.0},
@@ -112,9 +117,12 @@ def novo_jogo(cfg):
     for pasta in estado["ministros"]:
         estado["candidatos_ministros"][pasta] = gerar_candidatos(estado, rng, pasta)
 
-    eleicoes.nova_campanha(estado, rng, inicial=True)
-    registrar_historico(estado)
-    noticia(estado, f"Começa a campanha para {eleicoes.NOME_CARGO[escopo]} de {rotulo}. Cenário: {CENARIOS[cenario]['nome']}.", "info")
+    # Eleito em 2022: a partida começa na posse (1º de janeiro de 2023). A próxima eleição é em outubro de 2026.
+    from . import turno
+    estado["eleicoes"].append(eleicoes.eleicao_2022(estado, rng))
+    noticia(estado, f"Você venceu a eleição de 2022 para {eleicoes.NOME_CARGO[escopo]} de {rotulo}. Cenário: {CENARIOS[cenario]['nome']}.", "bom")
+    turno._posse(estado, rng)
+    noticia(estado, "Próxima eleição: outubro de 2026. A campanha de reeleição começa no 2º trimestre de 2026.", "info")
     return estado
 
 

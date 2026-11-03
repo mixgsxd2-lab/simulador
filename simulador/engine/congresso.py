@@ -35,7 +35,7 @@ def montar(rng, escopo, jogador, total_baixa, total_alta):
         d = distancia(jogador["eco"], jogador["soc"], p["eco"], p["soc"])
         afin = 66 - 54 * d + (14 if s == jogador["partido"] else 0) + rng.uniform(-4, 4)
         out[s] = {"sigla": s, "nome": p["nome"], "eco": p["eco"], "soc": p["soc"], "baixa": baixa[s], "alta": alta[s],
-                  "cor": p.get("cor", "#7a8699"), "numero": p.get("numero"),
+                  "cor": p.get("cor", "#7a8699"), "numero": p.get("numero"), "wiki": p.get("wiki"),
                   "afin": round(clamp(afin, 5, 95), 2), "favores": 0.0, "ministros": 0, "jogador": s == jogador["partido"]}
     return {"partidos": out, "total_baixa": total_baixa, "total_alta": total_alta, "leis_aprovadas": [], "leis_rejeitadas": [], "leis_derrubadas": []}
 

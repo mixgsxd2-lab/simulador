@@ -9,7 +9,7 @@ from ..data.geo import ESTADOS, PAISES, ESTADOS_POR_UF
 from ..data.historia import PRESIDENTES, ERAS, GOVERNADORES
 from ..data.politica import PARTIDOS, IDEOLOGIAS, PROPOSTAS, PASTAS, LEIS, CENARIOS, SETORES, ROTULO_SETOR
 from ..db import get_db, transacao, carregar_jogo, salvar_estado, salvar_relatorio
-from ..engine import acoes, estado as est, multiplayer, visao
+from ..engine import acoes, diplomacia, estado as est, multiplayer, visao
 
 bp = Blueprint("api", __name__)
 ALFABETO = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
@@ -51,6 +51,19 @@ def _codigo_novo(db):
             return cod
 
 
+ROTULO_EFEITO = {"economia.confianca": "confiança", "economia.caixa": "caixa (R$ bi)", "economia.tendencia": "crescimento potencial",
+                 "economia.cambio": "câmbio", "setores.infraestrutura": "infraestrutura", "setores.seguranca": "segurança",
+                 "setores.meio_ambiente": "meio ambiente", "sociedade.protestos": "protestos", "diplomacia.militar": "poder militar",
+                 "diplomacia.onu": "prestígio na ONU", "popularidade": "popularidade"}
+
+
+def _efeitos_txt(prop):
+    """Resumo legível dos efeitos de uma proposta de acordo."""
+    def fmt(ef, sufixo=""):
+        return [f"{ROTULO_EFEITO.get(k, k)} {'+' if v > 0 else ''}{v:g}{sufixo}" for k, v in ef.items()]
+    return fmt(prop["imediato"]) + fmt(prop["tri"], "/trim.")
+
+
 @bp.get("/catalogo")
 def catalogo():
     return jsonify({
@@ -58,6 +71,10 @@ def catalogo():
         "leis": {k: {kk: vv for kk, vv in v.items() if kk != "efeitos"} for k, v in LEIS.items()},
         "pastas": PASTAS, "cenarios": {k: {"nome": v["nome"], "desc": v["desc"]} for k, v in CENARIOS.items()},
         "setores": SETORES, "rotulo_setor": ROTULO_SETOR, "papeis": multiplayer.PAPEIS,
+        "diplomacia": {"formatos": diplomacia.FORMATOS, "concessoes": diplomacia.CONCESSOES, "interesse": diplomacia.INTERESSE,
+                       "pautas": {k: {"nome": v["nome"], "ico": v["ico"], "propostas": {pk: {kk: vv for kk, vv in pv.items() if kk not in ("imediato", "tri")}
+                                                                                          | {"efeitos": _efeitos_txt(pv)} for pk, pv in v["propostas"].items()}}
+                                  for k, v in diplomacia.PAUTAS.items()}},
         "presidentes": PRESIDENTES, "eras": ERAS, "governadores": {uf: {"nome": n, "partido": p} for uf, (n, p) in GOVERNADORES.items()},
     })
 
@@ -136,8 +153,8 @@ def criar_jogo():
         agora = time.time()
         tx.execute("INSERT INTO jogos(codigo,modo,duracao,estado,criado,atualizado) VALUES (?,?,?,?,?,?)",
                    (cod, cfg["modo"], cfg["duracao"], json.dumps(estado, ensure_ascii=False), agora, agora))
-        tx.execute("INSERT INTO jogadores(jogo,nome,papel,token,anfitriao,entrou) VALUES (?,?,?,?,1,?)",
-                   (cod, estado["jogador"]["nome"], "presidente", token, agora))
+        tx.execute("INSERT INTO jogadores(jogo,nome,papel,token,anfitriao,entrou,visto) VALUES (?,?,?,?,1,?,?)",
+                   (cod, estado["jogador"]["nome"], "presidente", token, agora, agora))
     return jsonify({"ok": True, "codigo": cod, "token": token})
 
 
@@ -180,14 +197,16 @@ def entrar(codigo):
             extra["pais"] = cod
             salvar_estado(db, codigo, estado)
         token = secrets.token_urlsafe(24)
-        db.execute("INSERT INTO jogadores(jogo,nome,papel,extra,token,anfitriao,entrou) VALUES (?,?,?,?,?,0,?)",
-                   (codigo, nome, papel, json.dumps(extra), token, time.time()))
+        db.execute("INSERT INTO jogadores(jogo,nome,papel,extra,token,anfitriao,entrou,visto) VALUES (?,?,?,?,?,0,?,?)",
+                   (codigo, nome, papel, json.dumps(extra), token, time.time(), time.time()))
     return jsonify({"ok": True, "token": token})
 
 
 def _pacote(db, row, estado, jog):
     codigo = row["codigo"]
-    jogadores = [{"nome": r["nome"], "papel": r["papel"], "anfitriao": bool(r["anfitriao"]), "extra": json.loads(r["extra"])}
+    agora = time.time()
+    jogadores = [{"nome": r["nome"], "papel": r["papel"], "anfitriao": bool(r["anfitriao"]), "extra": json.loads(r["extra"]),
+                  "online": agora - (r["visto"] or 0) < ONLINE_SEG}
                  for r in db.execute("SELECT * FROM jogadores WHERE jogo=? ORDER BY id", (codigo,))]
     mensagens = [dict(r) for r in db.execute("SELECT autor,papel,texto,ts FROM mensagens WHERE jogo=? ORDER BY id DESC LIMIT 40", (codigo,))][::-1]
     pedidos = []
@@ -197,6 +216,13 @@ def _pacote(db, row, estado, jog):
             "eu": {"nome": jog["nome"], "papel": jog["papel"], "anfitriao": bool(jog["anfitriao"]), "extra": json.loads(jog["extra"])},
             "jogadores": jogadores, "mensagens": mensagens, "pedidos": pedidos}
     return resp
+
+
+ONLINE_SEG = 20  # sem sinal há mais que isso = offline
+
+
+def _marcar_visto(db, jog):
+    db.execute("UPDATE jogadores SET visto=? WHERE id=?", (time.time(), jog["id"]))
 
 
 @bp.get("/jogos/<codigo>")
@@ -209,7 +235,50 @@ def obter(codigo):
         return erro("Partida não encontrada.", 404)
     if not jog:
         return erro("Entre na partida para jogar.", 401, precisa_entrar=True)
+    _marcar_visto(db, jog)
     return jsonify(_pacote(db, row, estado, jog))
+
+
+@bp.get("/jogos/<codigo>/sinal")
+def sinal(codigo):
+    """Sincronização leve do multiplayer: o cliente só baixa a partida inteira quando algo muda."""
+    codigo = codigo.upper()
+    db = get_db()
+    jog = _jogador(db, codigo)
+    if not jog:
+        return erro("Não autorizado.", 401)
+    _marcar_visto(db, jog)
+    row = db.execute("SELECT versao FROM jogos WHERE codigo=?", (codigo,)).fetchone()
+    if not row:
+        return erro("Partida não encontrada.", 404)
+    agora = time.time()
+    j = db.execute("SELECT COUNT(*) n, SUM(CASE WHEN ? - visto < ? THEN 1 ELSE 0 END) on_ FROM jogadores WHERE jogo=?",
+                   (agora, ONLINE_SEG, codigo)).fetchone()
+    m = db.execute("SELECT COALESCE(MAX(id),0) FROM mensagens WHERE jogo=?", (codigo,)).fetchone()[0]
+    p = db.execute("SELECT COALESCE(MAX(id),0), SUM(CASE WHEN status='pendente' THEN 1 ELSE 0 END) FROM pedidos WHERE jogo=?", (codigo,)).fetchone()
+    return jsonify({"ok": True, "assinatura": f"{row['versao']}-{j['n']}-{j['on_'] or 0}-{m}-{p[0]}-{p[1] or 0}"})
+
+
+@bp.post("/jogos/<codigo>/propostas/<int:pid>/responder")
+def responder_proposta_lider(codigo, pid):
+    """Líder estrangeiro (jogador) aceita ou rejeita uma proposta enviada pelo anfitrião."""
+    codigo = codigo.upper()
+    aceitar = bool((request.get_json(silent=True) or {}).get("aceitar"))
+    with transacao() as db:
+        jog = _jogador(db, codigo)
+        row, estado = carregar_jogo(db, codigo)
+        if not row or not jog:
+            return erro("Não autorizado.", 401)
+        pais = json.loads(jog["extra"]).get("pais")
+        alvo = next((a for a in estado["diplomacia"].get("aguardando", []) if a["id"] == pid), None)
+        if jog["papel"] != "lider" or not alvo or alvo["cod"] != pais:
+            return erro("Essa proposta não é para você.", 403)
+        ok, msg = diplomacia.resposta_lider(estado, pid, aceitar)
+        salvar_estado(db, codigo, estado)
+        row, _ = carregar_jogo(db, codigo)
+        pacote = _pacote(db, row, estado, jog)
+    pacote.update(ok=ok, msg=msg)
+    return jsonify(pacote)
 
 
 @bp.post("/jogos/<codigo>/acao")
@@ -265,6 +334,9 @@ def criar_pedido(codigo):
     if tipo == "acordo":
         extra = json.loads(jog["extra"])
         payload = {"pais": extra.get("pais"), "acao": payload.get("acao") if payload.get("acao") in ("tratado", "alianca", "sancionar", "melhorar") else "tratado"}
+    elif tipo == "reuniao":
+        extra = json.loads(jog["extra"])
+        payload = {"pais": extra.get("pais"), "pauta": payload["pauta"], "proposta": payload["proposta"]}
     elif tipo == "orcamento":
         payload = {"setor": payload.get("setor") if payload.get("setor") in SETORES else "saude"}
     else:

@@ -6,15 +6,45 @@ const marcar = (k, v) => { try { sessionStorage.setItem(k + CODIGO, v); } catch 
 
 async function boot() {
   CAT = await api('/api/catalogo');
-  TAB = guardar.get('sim_aba', 'governo');
+  const salva = guardar.get('sim_aba');
+  TAB = salva || 'governo';
   if (!VIEWS[TAB]) TAB = 'governo';
   await carregar(true);
-  setInterval(() => { if (!document.hidden && G && G.jogadores.length > 1 && !ocupado) carregar(false); }, 5000);
+  if (G && !G.eu.anfitriao && !salva) { TAB = 'sala'; render(false); }
+  sincronizar();
+}
+/* Multiplayer: a cada 3 s pergunta ao servidor só uma "assinatura" (versão, jogadores, chat, pedidos);
+   a partida inteira só é baixada quando algo mudou. Roda sempre, mesmo com um jogador só,
+   para o anfitrião ver quem acabou de entrar. */
+let assinatura = null;
+async function sincronizar() {
+  try {
+    if (G && !document.hidden && !ocupado) {
+      const r = await api(`/api/jogos/${CODIGO}/sinal`, undefined, CODIGO);
+      if (r.ok && assinatura !== null && r.assinatura !== assinatura && !ocupado) await carregar(false);
+      if (r.ok) assinatura = r.assinatura;
+    }
+  } finally { setTimeout(sincronizar, 3000); }
+}
+function avisos(antigo, novo) {
+  if (!antigo) return;
+  const eu = novo.eu;
+  const nomes = new Set(antigo.jogadores.map((j) => j.nome + j.papel));
+  novo.jogadores.filter((j) => !nomes.has(j.nome + j.papel)).forEach((j) => toast(`${j.nome} entrou na sala como ${CAT.papeis[j.papel] || j.papel}.`));
+  const ultima = antigo.mensagens[antigo.mensagens.length - 1]?.ts || 0;
+  novo.mensagens.filter((m) => m.ts > ultima && m.autor !== eu.nome).slice(-2).forEach((m) => { if (TAB !== 'sala') toast(`${m.autor}: ${m.texto}`); });
+  const antes = Object.fromEntries(antigo.pedidos.map((p) => [p.id, p.status]));
+  novo.pedidos.forEach((p) => {
+    if (eu.anfitriao && !(p.id in antes) && p.status === 'pendente') toast(`Novo pedido de ${p.autor}. Veja a aba Sala.`);
+    if (!eu.anfitriao && p.autor === eu.nome && antes[p.id] === 'pendente' && p.status !== 'pendente') toast(`Seu pedido foi ${p.status}.`, p.status === 'aprovado' ? 'ok' : 'erro');
+  });
+  if (!eu.anfitriao && novo.estado.meta.turno !== antigo.estado.meta.turno) toast(`Novo trimestre: ${novo.estado.meta.ano} · ${novo.estado.meta.trimestre}º tri.`);
 }
 function aceitar(r) {
-  const mudou = !G || r.versao !== G.versao || r.mensagens.length !== G.mensagens.length || r.jogadores.length !== G.jogadores.length
+  const mudou = !G || r.versao !== G.versao || r.mensagens.length !== G.mensagens.length || JSON.stringify(r.jogadores) !== JSON.stringify(G.jogadores)
     || JSON.stringify(r.pedidos.map((p) => p.status)) !== JSON.stringify(G.pedidos.map((p) => p.status));
   if (!G || r.versao !== G.versao) UI.draft = null;
+  avisos(G, r);
   G = r;
   return mudou;
 }
@@ -22,6 +52,8 @@ async function carregar(forcar) {
   const r = await api(`/api/jogos/${CODIGO}`, undefined, CODIGO);
   if (r._status === 401) return telaEntrar();
   if (!r.ok) { $('#jogo').innerHTML = `<div class="veu"><div class="vidro modal">${UIc.vazio(esc(r.erro || 'Erro'), 'alerta')}<a class="btn btn-ouro" href="/">Voltar ao menu</a></div></div>`; return; }
+  // quem entra numa sala já em andamento só vê os resultados das eleições futuras
+  if (!G && !r.eu.anfitriao && visto('eleicoes') === null) marcar('eleicoes', r.estado.eleicoes.length);
   if (aceitar(r) || forcar) render(forcar);
 }
 async function telaEntrar() {
@@ -44,12 +76,19 @@ async function telaEntrar() {
 function render(animar) {
   const s = G.estado, m = s.meta, eu = G.eu;
   const fase = m.fase === 'campanha' ? 'Campanha eleitoral' : m.fase === 'fim' ? 'Partida encerrada' : `${m.mandato}º mandato · trimestre ${m.turno_mandato} de 16`;
-  const bloqueada = (k) => m.fase === 'campanha' && !['governo', 'estatisticas', 'config', 'diplomacia'].includes(k);
-  const navs = ABAS.map(([k, ic, t]) => `<button type="button" class="nav-item ${k === TAB ? 'ativa' : ''} ${bloqueada(k) ? 'bloq' : ''}" data-fn="mudarAba" data-aba="${k}" aria-current="${k === TAB ? 'page' : 'false'}">${icone(ic)}<span>${t}</span></button>`).join('');
+  const bloqueada = (k) => m.fase === 'campanha' && !['governo', 'estatisticas', 'config', 'diplomacia', 'sala'].includes(k);
+  const badges = { sala: pendenciasSala(), diplomacia: (s.diplomacia.propostas || []).length };
+  const navs = ABAS.map(([k, ic, t]) => `<button type="button" class="nav-item ${k === TAB ? 'ativa' : ''} ${bloqueada(k) ? 'bloq' : ''}" data-fn="mudarAba" data-aba="${k}" aria-current="${k === TAB ? 'page' : 'false'}">${icone(ic)}<span>${t}</span>${badges[k] ? `<i class="badge">${badges[k]}</i>` : ''}</button>`).join('');
   const prox = m.fase === 'campanha' ? 'Avançar campanha' : 'Encerrar trimestre';
   const scroll = window.scrollY;
+  // preserva o que o jogador está digitando (chat, valores) quando a tela é redesenhada pela sincronização
+  const campos = $$('#jogo input[id], #jogo select[id], #jogo textarea[id]').map((el) => [el.id, el.value]);
+  const foco = document.activeElement && document.activeElement.id;
+  const chatAntes = $('#chat');
+  const chatNoFim = !chatAntes || chatAntes.scrollTop + chatAntes.clientHeight >= chatAntes.scrollHeight - 30;
   $('#jogo').innerHTML = `<div class="app">
     <aside class="vidro lateral"><a href="/" title="Menu inicial"><img class="logo" src="/static/img/logo.jpg" alt="Menu inicial"></a>${navs}<span class="espaco"></span>
+      <button type="button" class="nav-item" data-fn="abrirTutorial" aria-label="Tutorial">${icone('info')}<span>Tutorial</span></button>
       <button type="button" class="nav-item" data-fn="alternarTema" aria-label="Alternar tema">${icone(document.documentElement.dataset.theme === 'dark' ? 'sol' : 'lua')}<span>Tema</span></button></aside>
     <div class="principal">
       <header class="vidro barra-topo"><div class="governante">${avJogador()}<div class="flex1" style="min-width:0"><b>${esc(s.jogador.nome)}</b>
@@ -64,9 +103,20 @@ function render(animar) {
     </div></div>
     <nav class="vidro nav-inferior" aria-label="Abas">${navs}</nav>`;
   if (!animar) $('#aba').style.animation = 'none';
+  for (const [id, v] of campos) {
+    const el = document.getElementById(id);
+    if (!el || el.type === 'range' || v === '') continue;
+    if (el.tagName === 'SELECT' && ![...el.options].some((o) => o.value === v)) continue;
+    el.value = v;
+  }
+  if (foco) { const el = document.getElementById(foco); if (el && el.focus) { el.focus(); if (el.type === 'text' && el.setSelectionRange) el.setSelectionRange(el.value.length, el.value.length); } }
+  const chat = $('#chat');
+  if (chat && chatNoFim) chat.scrollTop = chat.scrollHeight;
   window.scrollTo(0, scroll);
   POS_RENDER[TAB]?.();
+  Retratos.carregar($('#jogo'));
   modais();
+  if (typeof Tutorial !== 'undefined') Tutorial.reposicionar();
 }
 
 /* ---------- modais ---------- */
@@ -76,23 +126,27 @@ function modais() {
   if (modalLocal) html = modalLocal();
   else if (s.meta.encerrado && visto('rel') !== 'oculto') html = modalRelatorio(s.relatorio);
   else if (s.eleicoes.length > Number(visto('eleicoes') || 0)) html = modalEleicao(s.eleicoes[s.eleicoes.length - 1]);
-  else if (s.evento) html = modalEvento(s.evento);
+  else if (s.evento && (G.eu.anfitriao || visto('ev') !== s.evento.titulo)) html = modalEvento(s.evento);
   raiz.innerHTML = html;
+  Retratos.carregar(raiz);
+  // primeira partida: abre o tutorial quando não há nenhuma janela na frente
+  if (!html && G.eu.anfitriao && !guardar.get('sim_tutorial') && typeof Tutorial !== 'undefined' && !Tutorial.ativo) Tutorial.iniciar();
 }
 function modalEvento(ev) {
   return `<div class="veu"><div class="vidro modal evento-modal" role="dialog" aria-modal="true"><span class="selo alerta tag-ev">${icone('raio', 'p')} Evento · simulado</span>
     <h2>${esc(ev.titulo)}</h2><p class="suave">${esc(ev.texto)}</p>
     ${G.eu.anfitriao ? ev.escolhas.map((c, i) => `<button type="button" class="opcao-ev" data-a="responder_evento" data-p='{"escolha":${i}}'><span class="n">${i + 1}</span><span class="flex1"><b>${esc(c.label)}</b><div class="mini fraco">${esc(c.desc)}</div></span>${icone('dir', 'p')}</button>`).join('')
-    : `<div class="vazio"><span class="spinner"></span>Aguardando a decisão do anfitrião…</div>`}</div></div>`;
+    : `<div class="vazio"><span class="spinner"></span>Aguardando a decisão do anfitrião…</div><div class="linha" style="justify-content:flex-end"><button type="button" class="btn btn-mini" data-fn="fecharEvento">Fechar</button></div>`}</div></div>`;
 }
 function modalEleicao(e) {
-  const titulo = { inicial: 'Resultado da eleição', reeleicao: 'Resultado da reeleição', sucessor: 'Eleição do sucessor' }[e.tipo];
-  const lista = (l) => { const max = Math.max(...l.map((c) => c.pct)); return l.map((c) => `<div class="candidato-linha ${c.id === 'jogador' ? 'eu' : ''}">${c.id === 'jogador' ? avJogador() : avNPC(c.nome)}<div><b class="peq">${esc(c.nome)}</b><div class="mini fraco">${selo(c.partido)} ${esc(c.partido)}</div></div>${UIc.medidor(c.pct, max * 1.05, c.id === 'jogador' ? 'var(--ouro)' : partidoDe(c.partido).cor)}<b class="num" style="text-align:right">${nf(c.pct, 1)}%</b></div>`).join(''); };
+  const titulo = e.historica ? `Eleição de ${e.ano}` : { inicial: 'Resultado da eleição', reeleicao: `Eleição de ${e.ano}: reeleição`, sucessor: `Eleição de ${e.ano}: sucessão` }[e.tipo];
+  const lista = (l) => { const max = Math.max(...l.map((c) => c.pct)); return l.map((c) => `<div class="candidato-linha ${c.id === 'jogador' ? 'eu' : ''}">${avCand(c)}<div><b class="peq">${esc(c.nome)}</b><div class="mini fraco">${selo(c.partido)} ${esc(c.partido)}</div></div>${UIc.medidor(c.pct, max * 1.05, c.id === 'jogador' ? 'var(--ouro)' : partidoDe(c.partido).cor)}<b class="num" style="text-align:right">${nf(c.pct, 1)}%</b></div>`).join(''); };
   const ganhou = e.venceu;
   return `<div class="veu"><div class="vidro modal largo" role="dialog" aria-modal="true"><span class="selo ouro">${icone('urna', 'p')} ${e.ano}</span><h2 class="titulo-display" style="font-size:2rem;margin:10px 0">${titulo}</h2>
     <div class="grade ${e.turno2 ? 'g2' : ''}"><div><div class="rotulo">1º turno</div>${lista(e.turno1)}</div>${e.turno2 ? `<div><div class="rotulo">2º turno</div>${lista(e.turno2)}</div>` : ''}</div>
     <div class="vencedor ${ganhou ? '' : 'derrota'}"><div class="titulo-display" style="font-size:1.6rem">${ganhou ? (e.tipo === 'sucessor' ? 'Seu sucessor foi eleito!' : 'Vitória!') : (e.tipo === 'sucessor' ? 'Seu sucessor foi derrotado' : 'Derrota nas urnas')}</div>
-      <div class="suave peq">${ganhou ? (e.tipo === 'inicial' ? 'Prepare-se para a posse e monte seu gabinete.' : 'O eleitorado aprovou seu governo.') : 'O eleitorado escolheu outro caminho.'}</div></div>
+      <div class="suave peq">${e.historica ? `Cenário alternativo: ${S().meta.escopo === 'nacional' ? 'os percentuais são os oficiais do TSE, mas ' : ''}você ocupa o lugar do vencedor. Posse em 1º de janeiro de ${e.ano + 1}; a próxima eleição é em ${e.ano + 4}.`
+        : ganhou ? (e.tipo === 'inicial' ? 'Prepare-se para a posse e monte seu gabinete.' : 'O eleitorado aprovou seu governo.') : 'O eleitorado escolheu outro caminho.'}</div></div>
     <div class="linha mt" style="justify-content:flex-end"><button type="button" class="btn btn-ouro btn-grande" data-fn="fecharEleicao">Continuar ${icone('dir', 'p')}</button></div></div></div>`;
 }
 function modalRelatorio(r) {
@@ -159,12 +213,26 @@ const FN = {
     i.value = ''; carregar(true);
   },
   async enviarPedido(el) {
-    const payload = { valor: $('#ped-valor')?.value, setor: $('#ped-setor')?.value, acao: $('#ped-acao')?.value };
+    const [pauta, proposta] = ($('#ped-prop')?.value || ':').split(':');
+    const payload = { valor: $('#ped-valor')?.value, setor: $('#ped-setor')?.value, acao: $('#ped-acao')?.value, pauta, proposta };
     const r = await api(`/api/jogos/${CODIGO}/pedidos`, { tipo: el.dataset.tipo, payload }, CODIGO);
     toast(r.ok ? 'Pedido enviado ao anfitrião.' : r.erro, r.ok ? 'ok' : 'erro');
     if (r.ok) carregar(true);
   },
   decidirPedido(el) { enviar(`/api/jogos/${CODIGO}/pedidos/${el.dataset.id}/decidir`, { aprovar: el.dataset.ok === '1' }); },
+  responderLider(el) { enviar(`/api/jogos/${CODIGO}/propostas/${el.dataset.id}/responder`, { aceitar: el.dataset.ok === '1' }); },
+  reuSet(el) {
+    UI.reu[el.dataset.k] = el.dataset.v;
+    if (el.dataset.k === 'pauta') UI.reu.proposta = null;
+    const painel = $('#painel-ent');
+    if (painel) painel.innerHTML = painelEntidade(); else render(false);
+  },
+  convocarCupula() {
+    const [pauta, proposta] = ($('#cup-prop')?.value || ':').split(':');
+    agir('cupula_multilateral', { bloco: $('#cup-bloco')?.value, pauta, proposta });
+  },
+  fecharEvento() { marcar('ev', G.estado.evento?.titulo || ''); modais(); },
+  abrirTutorial() { Tutorial.iniciar(true); },
 };
 
 document.addEventListener('click', (ev) => {

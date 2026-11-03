@@ -86,3 +86,13 @@
 .filtro { border: 1px solid var(--borda); background: var(--vidro); color: var(--texto-2); padding: 6px 13px; border-radius: 999px; cursor: pointer; font-size: .8rem; font-weight: 600; transition: all .2s; }
 .filtro.ativo { background: var(--texto); color: var(--bg); border-color: transparent; }
 .filtro:hover:not(.ativo) { color: var(--texto); border-color: var(--borda-2); }
+
+/* logotipo real do partido (carregado da Wikipédia) */
+.logo-partido { position: relative; display: inline-grid; place-items: center; width: var(--t, 40px); height: var(--t, 40px); flex: none; border-radius: 12px; overflow: hidden;
+  background: var(--pc); color: #fff; font-weight: 800; font-size: calc(var(--t, 40px) * .36); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .18); }
+.logo-partido.com-foto { background: #fff; box-shadow: 0 0 0 1px var(--borda); }
+.logo-partido img { position: absolute; inset: 8%; width: 84%; height: 84%; object-fit: contain; animation: aparece .6s; }
+.logo-partido.com-foto b { visibility: hidden; }
+/* foto real de candidato sobre o avatar ilustrado */
+.foto-real img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 18%; z-index: 1; animation: aparece .6s; }
+.selo.real { color: var(--ciano); background: color-mix(in srgb, var(--ciano) 13%, transparent); border-color: color-mix(in srgb, var(--ciano) 32%, transparent); }
