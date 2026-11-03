@@ -1,4 +1,5 @@
 """Indicadores derivados enviados ao cliente (não persistidos)."""
+from ..data.politica import LEIS
 from . import congresso, diplomacia, economia
 from .util import clamp
 
@@ -29,6 +30,7 @@ def derivados(estado):
     e = estado["economia"]
     diplomacia._d(estado)  # partidas antigas: garante as listas de acordos/propostas
     return {
+        "chance_leis": {k: congresso.chance_aprovacao(estado, v) for k, v in LEIS.items() if estado["meta"]["escopo"] in v["escopos"]},
         "apoio_baixa": congresso.apoio(estado, "baixa"), "apoio_alta": congresso.apoio(estado, "alta"),
         "partidos": partidos, "grupos": grupos(estado), "carga": round(economia.carga(estado) * 100, 1),
         "ano_idade": 35 + estado["meta"]["turno"] // 4,

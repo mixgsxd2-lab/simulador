@@ -70,7 +70,7 @@ def _efeitos_txt(prop):
 def catalogo():
     return jsonify({
         "partidos": PARTIDOS, "ideologias": IDEOLOGIAS, "propostas": PROPOSTAS, "estados": ESTADOS, "paises": PAISES,
-        "leis": {k: {kk: vv for kk, vv in v.items() if kk != "efeitos"} for k, v in LEIS.items()},
+        "leis": {k: {**{kk: vv for kk, vv in v.items() if kk != "efeitos"}, "pop": v["efeitos"].get("popularidade", 0)} for k, v in LEIS.items()},
         "pastas": PASTAS, "cenarios": {k: {"nome": v["nome"], "desc": v["desc"]} for k, v in CENARIOS.items()},
         "setores": SETORES, "rotulo_setor": ROTULO_SETOR, "papeis": multiplayer.PAPEIS,
         "cupulas": {k: {"nome": v["nome"], "quando": v["quando"], "trimestres": v.get("trimestres", []), "datas": v.get("datas")} for k, v in CUPULAS.items()},

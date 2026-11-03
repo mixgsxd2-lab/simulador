@@ -8,6 +8,7 @@ async function boot() {
   CAT = await api('/api/catalogo');
   const salva = guardar.get('sim_aba');
   TAB = salva || 'governo';
+  if (ABAS_ANTIGAS[TAB]) [TAB, UI.subPais] = ABAS_ANTIGAS[TAB];
   if (!VIEWS[TAB]) TAB = 'governo';
   await carregar(true);
   if (G && !G.eu.governa && !salva) { TAB = 'sala'; render(false); }
@@ -114,7 +115,7 @@ function render(animar) {
       <header class="vidro barra-topo"><div class="governante">${avJogador()}<div class="flex1" style="min-width:0"><b>${esc(s.jogador.nome)}</b>
         <div class="sub">${selo(s.jogador.partido)}<span>${m.modo === 'presidente' ? (m.fase === 'governo' ? 'Presidente da República' : 'Candidato(a) à Presidência') : (m.fase === 'governo' ? 'Governador(a) — ' : 'Candidato(a) — ') + esc(m.rotulo)}</span></div></div></div>
         <div class="topo-info"><button type="button" class="chip" style="cursor:pointer" data-fn="copiarLink" data-link="${esc(location.origin + '/jogo/' + G.codigo)}" title="Copiar convite multiplayer">${icone('link', 'p')}Sala <b style="letter-spacing:.15em;color:var(--ouro)">${G.codigo}</b> · ${G.jogadores.length} jogador${G.jogadores.length > 1 ? 'es' : ''}</button><span class="chip">${icone('calendario', 'p')}${m.ano} · ${m.trimestre}º tri</span><span class="chip">${esc(fase)}</span>
-          <span class="capital" title="Capital político: gasto em leis, nomeações, negociações e diplomacia">${icone('raio', 'p')}Capital <span class="pips">${Array.from({ length: 8 }, (_, i) => `<i class="pip ${i < s.capital ? 'on' : ''}"></i>`).join('')}</span></span>
+          <span class="capital" title="Pontos de ação: cada ação (lei, nomeação, negociação, diplomacia) gasta pontos. Eles voltam a cada trimestre.">${icone('raio', 'p')}Ações <b>${s.capital}</b> <span class="pips">${Array.from({ length: 8 }, (_, i) => `<i class="pip ${i < s.capital ? 'on' : ''}"></i>`).join('')}</span></span>
           ${m.fase !== 'campanha' ? `<div class="mini-anel" title="Popularidade">${UIc.anel(s.popularidade, 100, '', corEstado(s.popularidade, 55, 35), 46, pct(s.popularidade))}</div>` : ''}
           ${botaoPronto(prox)}
           ${!eu.governa ? `<span class="selo">${esc(CAT.papeis[eu.papel] || eu.papel)} · ${esc(eu.nome)}</span>` : ''}</div></header>
@@ -192,7 +193,7 @@ function modalMinistro(pasta) {
     const s = G.estado, m = s.ministros[pasta], cands = s.candidatos_ministros[pasta] || [];
     const linha = (c, i) => `<div class="vidro forte painel"><div class="linha nw">${avNPC(c.nome, c.idade).replace('avatar-moldura', 'avatar-moldura" style="width:64px')}<div class="flex1"><b>${esc(c.nome)}</b><div class="mini fraco">${selo(c.partido)} ${esc(c.partido)} · ${c.idade} anos</div></div></div>
       ${UIc.barra('Competência', c.competencia, 'var(--azul)')}${UIc.barra('Integridade', c.integridade, c.integridade < 50 ? 'var(--vermelho)' : 'var(--verde)')}${UIc.barra('Carisma', c.carisma, 'var(--roxo)')}
-      ${i !== undefined ? bA('Nomear (1 capital)', 'nomear_ministro', { pasta, indice: i }, 'btn-ouro btn-mini', '', 'check') : ''}</div>`;
+      ${i !== undefined ? bA('Nomear (1 ação)', 'nomear_ministro', { pasta, indice: i }, 'btn-ouro btn-mini', '', 'check') : ''}</div>`;
     return `<div class="veu" data-fn="fecharModal"><div class="vidro modal largo" role="dialog" aria-modal="true" data-parar="1"><div class="linha entre nw"><div><span class="rotulo">${icone(ICO_PASTA[pasta] || 'pasta', 'p')} Gabinete</span><h2 class="titulo-display" style="font-size:1.7rem;margin:6px 0">${esc(rotuloPasta(pasta))}</h2></div>
       ${bF('', 'fecharModal', 'btn-icone btn-fantasma', 'aria-label="Fechar"', 'x')}</div>
       ${m ? `<div class="rotulo">Titular atual</div><div class="grade g2 mt">${linha(m)}<div class="coluna" style="justify-content:center">${bA('Exonerar', 'demitir_ministro', { pasta }, 'btn-perigo', '', 'sair')}<p class="mini fraco">Exonerar reduz a afinidade do partido do ministro.</p></div></div>` : '<p class="alerta">Pasta vaga — o setor piora a cada trimestre.</p>'}
@@ -212,7 +213,11 @@ async function enviar(url, corpo) {
 const agir = (tipo, params) => enviar(`/api/jogos/${CODIGO}/acao`, { tipo, params });
 
 const FN = {
-  mudarAba(el) { TAB = el.dataset.aba; guardar.set('sim_aba', TAB); render(true); window.scrollTo({ top: 0, behavior: 'smooth' }); },
+  mudarAba(el) {
+    TAB = el.dataset.aba; if (el.dataset.sub) UI.subPais = el.dataset.sub;
+    guardar.set('sim_aba', TAB); render(true); window.scrollTo({ top: 0, behavior: 'smooth' });
+  },
+  subPais(el) { UI.subPais = el.dataset.v; render(false); },
   mudarTema(el) { Tema.set(el.dataset.tema); render(false); },
   alternarTema() { Tema.alternar(); render(false); },
   async avancar(el) {
@@ -232,8 +237,6 @@ const FN = {
   abrirPasta(el) { if (G.estado.meta.fase === 'campanha') return; modalLocal = modalMinistro(el.dataset.id); modais(); },
   fecharModal(el, ev) { if (ev && ev.target.closest('[data-parar]') && !ev.target.closest('[data-fn="fecharModal"].btn')) return; modalLocal = null; modais(); },
   selecionarEnt(el) { UI.sel = el.dataset.id; render(false); },
-  fecharSel() { UI.sel = null; $('#sel-gov').innerHTML = ''; $$('.mapa-forma.sel').forEach((p) => p.classList.remove('sel')); },
-  irDiplomacia() { TAB = 'diplomacia'; guardar.set('sim_aba', TAB); render(true); },
   destacar(el) { UI.destaque = el.dataset.v || null; render(false); },
   catLei(el) { UI.catLei = el.dataset.v; render(false); },
   fecharAlianca() { const v = $('#ali-sel')?.value; if (v) agir('campanha', { acao: 'alianca', partido: v }); },
@@ -276,6 +279,11 @@ document.addEventListener('click', (ev) => {
     agir(el.dataset.a, p);
   }
 });
+// lembra quais seções recolhíveis (<details>) o jogador abriu, para não fecharem a cada atualização
+document.addEventListener('toggle', (ev) => {
+  const d = ev.target;
+  if (d.dataset && d.dataset.det) { if (d.open) UI.abertos.add(d.dataset.det); else UI.abertos.delete(d.dataset.det); }
+}, true);
 document.addEventListener('keydown', (ev) => {
   if (ev.key === 'Enter' && ev.target.id === 'msg') FN.enviarMsg();
   if (ev.key === 'Escape' && modalLocal) { modalLocal = null; modais(); }

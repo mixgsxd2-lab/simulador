@@ -172,7 +172,7 @@ def acao_campanha(estado, tipo, p, rng):
         return False, "Ação de campanha inválida.", 0
     cap, fundo = custos[tipo]
     if estado["capital"] < cap:
-        return False, "Capital político insuficiente.", 0
+        return False, "Pontos de ação insuficientes.", 0
     if c["fundo"] < fundo:
         return False, "Fundo de campanha insuficiente.", 0
     if tipo == "debate" and (c["debate_feito"] or (c["inicial"] and c["turnos_restantes"] > 2)):

@@ -70,27 +70,49 @@ def ministro_bonus(estado):
     return (m["competencia"] - 50) * 0.06 if m else -2
 
 
+def _votos_esperados(estado, lei, casa):
+    """Votos favoráveis esperados numa casa (antes da variação aleatória do dia da votação)."""
+    pop = estado["popularidade"]
+    sim = 0.0
+    for p in estado["congresso"]["partidos"].values():
+        if not p[casa]:
+            continue
+        alinh = 0.0
+        if lei["eco"] or lei["soc"]:
+            alinh = 0.7 - (abs(lei["eco"] - p["eco"]) * 0.8 + abs(lei["soc"] - p["soc"]) * 0.5)
+        z = (p["afin"] - 50) / 12 + alinh * 1.3 + (pop - 50) / 60
+        sim += p[casa] * sig(z)
+    return sim
+
+
 def votar(estado, lei, rng):
     c = estado["congresso"]
-    pop = estado["popularidade"]
     precisa = 0.6 if lei["tipo"] == "emenda" else 0.5
     resultado = {}
     for casa in ("baixa", "alta"):
         total = c["total_" + casa]
         if not total:
             continue
-        sim = 0.0
-        for p in c["partidos"].values():
-            if not p[casa]:
-                continue
-            alinh = 0.0
-            if lei["eco"] or lei["soc"]:
-                alinh = 0.7 - (abs(lei["eco"] - p["eco"]) * 0.8 + abs(lei["soc"] - p["soc"]) * 0.5)
-            z = (p["afin"] - 50) / 12 + alinh * 1.3 + (pop - 50) / 60
-            sim += p[casa] * sig(z)
-        sim *= rng.uniform(0.96, 1.04)
+        sim = _votos_esperados(estado, lei, casa) * rng.uniform(0.96, 1.04)
         resultado[casa] = {"sim": int(round(min(sim, total))), "total": total, "aprovou": sim / total > precisa}
     return resultado
+
+
+def chance_aprovacao(estado, lei):
+    """Chance (0–1) de a lei passar no Congresso e não ser derrubada pelo STF. Mostrada ao jogador."""
+    c = estado["congresso"]
+    precisa = 0.6 if lei["tipo"] == "emenda" else 0.5
+    p = 1.0
+    for casa in ("baixa", "alta"):
+        total = c["total_" + casa]
+        if not total:
+            continue
+        sim = _votos_esperados(estado, lei, casa)
+        if sim <= 0:
+            return 0.0
+        # o resultado varia ±4% (fator uniforme entre 0,96 e 1,04)
+        p *= clamp((1.04 - precisa * total / sim) / 0.08, 0, 1)
+    return round(p * (1 - lei["risco"] * estado["justica"]["independencia"] / 100 * 0.9), 3)
 
 
 def tramitar_lei(estado, lei_id, rng):

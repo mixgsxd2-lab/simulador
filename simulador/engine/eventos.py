@@ -125,7 +125,7 @@ def responder(estado, indice, rng):
     esc = ev["escolhas"][indice]
     custo = -esc.get("capital", 0)
     if custo > estado["capital"]:
-        return False, "Capital político insuficiente."
+        return False, "Pontos de ação insuficientes."
     estado["capital"] -= custo
     if "chance" in esc:
         ok = rng.random() < esc["chance"]

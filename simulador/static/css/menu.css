@@ -182,3 +182,9 @@
   .aba-c { padding: 8px 6px; font-size: .78rem; }
   .navegacao { position: sticky; bottom: 0; margin: 20px -18px -18px; padding: 12px 18px; background: var(--vidro-3); backdrop-filter: blur(16px); border-radius: 0 0 var(--r-l) var(--r-l); }
 }
+
+/* opções avançadas (opcionais) da criação de partida */
+details.avancado-menu { margin-top: 20px; border: 1px solid var(--borda); border-radius: 16px; background: var(--vidro); padding: 0 14px; }
+details.avancado-menu > summary { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 13px 0; cursor: pointer; list-style: none; font-weight: 600; }
+details.avancado-menu > summary::-webkit-details-marker { display: none; }
+details.avancado-menu[open] { padding-bottom: 14px; }

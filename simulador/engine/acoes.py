@@ -9,7 +9,7 @@ ACOES_CAMPANHA = {"comicio", "tv", "redes", "ataque", "alianca", "debate"}
 
 def _cap(estado, custo):
     if estado["capital"] < custo:
-        return f"Capital político insuficiente (precisa de {custo})."
+        return f"Pontos de ação insuficientes (precisa de {custo})."
     estado["capital"] -= custo
     return None
 
@@ -56,6 +56,45 @@ def pressionar_bc(estado, p, rng):
     j["bc_indep"] = round(clamp(j["bc_indep"] - 6, 0, 100), 2)
     aplicar_efeitos(estado, {"economia.confianca": -3, "economia.choque_inf": 0.3, "popularidade": 1})
     return True, "O Banco Central cedeu e reduziu os juros. O mercado desconfia."
+
+
+# ---------- economia simplificada (um clique) ----------
+NIVEIS_GASTO = {"austeridade": 22.0, "equilibrio": 27.0, "investimento": 32.0}
+
+
+def politica_fiscal(estado, p, rng):
+    """Baixa ou aumenta todos os impostos de uma vez."""
+    d = {"baixar": -1, "aumentar": 1}.get(p.get("direcao"))
+    if not d:
+        return False, "Escolha baixar ou aumentar."
+    erro = _cap(estado, 1)
+    if erro:
+        return False, erro
+    for k in estado["impostos"]:
+        passo = 1.0 if k == "importacao" else 2.0
+        estado["impostos"][k] = round(clamp(estado["impostos"][k] + d * passo, 0, 45), 1)
+    if d < 0:
+        return True, "Impostos reduzidos: a economia e a popularidade sobem, mas entra menos dinheiro no caixa."
+    return True, "Impostos aumentados: entra mais dinheiro no caixa, mas a economia e a popularidade sofrem."
+
+
+def plano_orcamento(estado, p, rng):
+    """Define o nível de gasto e uma área prioritária (recebe uma fatia maior do orçamento)."""
+    o = estado["orcamento"]
+    nivel = p.get("nivel") if p.get("nivel") in NIVEIS_GASTO else o.get("nivel", "equilibrio")
+    prioridade = p.get("prioridade") if p.get("prioridade") in SETORES else o.get("prioridade")
+    if p.get("prioridade") == "nenhuma":
+        prioridade = None
+    escopo = estado["meta"]["escopo"]
+    aloc = dict(economia.alocacao_inicial(escopo))
+    if prioridade:
+        aloc[prioridade] = aloc[prioridade] + 12
+    o["aloc"] = economia.normalizar_aloc(aloc)
+    o["gasto_pct"] = NIVEIS_GASTO[nivel]
+    o["nivel"], o["prioridade"] = nivel, prioridade
+    nomes = {"austeridade": "austeridade (gasta menos, sobra caixa)", "equilibrio": "equilíbrio", "investimento": "investimento (serviços melhoram, caixa cai)"}
+    from ..data.politica import ROTULO_SETOR
+    return True, f"Orçamento: {nomes[nivel]}" + (f", prioridade em {ROTULO_SETOR[prioridade].lower()}." if prioridade else ".")
 
 
 # ---------- gabinete ----------
@@ -127,6 +166,20 @@ def negociar(estado, p, rng):
         aplicar_efeitos(estado, {"sociedade.midia": -2})
         return True, f"{sigla} reagiu mal à pressão."
     return False, "Tipo de negociação inválido."
+
+
+def negociar_base(estado, p, rng):
+    """Um clique: libera emendas para todos os partidos indecisos (afinidade entre 40 e 60)."""
+    indecisos = [s for s, x in estado["congresso"]["partidos"].items() if 40 <= x["afin"] < 60 and not x["jogador"]]
+    if not indecisos:
+        return False, "Não há partidos indecisos para negociar agora."
+    erro = _cap(estado, 1)
+    if erro:
+        return False, erro
+    gastar_ou_receber(estado, -20)
+    for s in indecisos:
+        congresso.liberar_emendas(estado, s, 20 / len(indecisos) * 2)
+    return True, f"R$ 20 bi em emendas para {len(indecisos)} partido(s) indeciso(s): mais votos no Congresso."
 
 
 # ---------- justiça / mídia ----------
@@ -221,7 +274,7 @@ def acao_diplomatica(estado, p, rng):
     if ac not in CUSTO_DIPLO:
         return False, "Ação inválida."
     if estado["capital"] < CUSTO_DIPLO[ac]:
-        return False, f"Capital político insuficiente (precisa de {CUSTO_DIPLO[ac]})."
+        return False, f"Pontos de ação insuficientes (precisa de {CUSTO_DIPLO[ac]})."
     ok, msg = diplomacia.acao(estado, ac, p.get("alvo"), rng)
     if ok:
         estado["capital"] -= CUSTO_DIPLO[ac]
@@ -235,7 +288,7 @@ def reuniao_diplomatica(estado, p, rng):
         return False, "Formato de reunião inválido."
     custo = diplomacia.FORMATOS[formato]["capital"]
     if estado["capital"] < custo:
-        return False, f"Capital político insuficiente (precisa de {custo})."
+        return False, f"Pontos de ação insuficientes (precisa de {custo})."
     ok, msg, _ = diplomacia.reuniao(estado, p.get("alvo"), formato, p.get("pauta") or None, p.get("proposta") or None,
                                     p.get("concessao") or "nenhuma", rng)
     if ok:
@@ -247,7 +300,7 @@ def cupula_multilateral(estado, p, rng):
     if estado["meta"]["escopo"] != "nacional":
         return False, "Cúpulas de blocos existem apenas no modo presidente."
     if estado["capital"] < 3:
-        return False, "Capital político insuficiente (precisa de 3)."
+        return False, "Pontos de ação insuficientes (precisa de 3)."
     ok, msg = diplomacia.cupula_bloco(estado, p.get("bloco"), p.get("pauta"), p.get("proposta"), rng)
     if ok:
         estado["capital"] -= 3
@@ -330,7 +383,7 @@ def encerrar_run(estado, p, rng):
 
 
 HANDLERS = {f.__name__: f for f in (
-    ajustar_impostos, ajustar_orcamento, pressionar_bc, nomear_ministro, demitir_ministro, propor_lei, negociar,
+    ajustar_impostos, ajustar_orcamento, politica_fiscal, plano_orcamento, negociar_base, pressionar_bc, nomear_ministro, demitir_ministro, propor_lei, negociar,
     responder_investigacao, pressionar_stf, indicar_stf, publicidade, negociar_impeachment, acao_diplomatica,
     responder_proposta, denunciar_acordo,
     pedir_repasse, alinhar_federal, campanha, responder_evento, avancar_turno, encerrar_run)}

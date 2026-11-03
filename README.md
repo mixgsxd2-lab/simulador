@@ -78,17 +78,18 @@ python tools/gerar_mapas.py world50.json br.json
 
 ## Como jogar
 
-- **Linha do tempo**: você venceu a eleição de 2022 e toma posse em 1º de janeiro de 2023. No 2º trimestre de 2026 começa a campanha (comícios, TV, alianças, debate) e em outubro de 2026 você disputa a reeleição contra os candidatos reais (Lula, Flávio Bolsonaro, Ronaldo Caiado, Romeu Zema, Renan Santos e Augusto Cury, exceto o do seu partido).
-- **Presidente**: mapa-múndi real com 194 países.
-- **Hard (Governador)**: qualquer UF no mapa do IBGE, com administração estadual e relações com a União e os outros estados.
-- **Personagem**: rosto, pele, olhos, cabelo, barba, idade (mínimo constitucional de 35 anos para Presidente e 30 para Governador), trajes, gravata, óculos, acessórios e faixa presidencial.
-- Cada trimestre dá **capital político**, gasto em leis, nomeações, negociações e diplomacia.
-- **Leis**: 44 projetos (economia, social, infraestrutura, tecnologia, meio ambiente, justiça e defesa). Ordinárias exigem maioria; emendas, 3/5.
-- **Diplomacia**: missões, acordos comerciais, alianças, sanções, guerras e ONU. **Cúpulas obrigatórias** (modo presidente): Mercosul (2º e 4º trimestres), BRICS e Assembleia Geral da ONU (3º trimestre) e COP30 em Belém (4º trimestre de 2025). Cada cúpula vira um evento obrigatório em que o presidente escolhe a posição do Brasil; as escolhas mudam a relação com os blocos, o prestígio na ONU e a economia (catálogo em `data/cupulas.py`).
+- **Objetivo**: você venceu a eleição de 2022 e governa desde janeiro de 2023. Chegue à eleição de outubro de 2026 com popularidade de 50% ou mais. Você enfrenta os candidatos reais de 2026 (Lula, Flávio Bolsonaro, Caiado, Zema, Renan Santos e Augusto Cury, exceto o do seu partido).
+- **Rodadas**: cada rodada é um trimestre. Você faz algumas ações, que gastam **pontos de ação** (⚡) e voltam a cada rodada, e toca em **Encerrar trimestre**.
+- **O que fazer agora**: na aba Início, um painel mostra o objetivo e as 3 ações mais importantes do momento, com atalho para o lugar certo.
+- **Abas**: Início (objetivo, ministérios, comunicação, manchetes), Economia, Congresso, Mundo, País (povo, Justiça e gráficos), Sala (multiplayer) e Ajustes.
+- **Economia em botões**: baixar ou aumentar impostos; orçamento em austeridade, equilíbrio ou investimento, mais uma área prioritária. Os controles deslizantes continuam em "Ajuste fino (avançado)".
+- **Leis**: 44 projetos agrupados por tema. Cada um mostra a **chance de aprovar** (Congresso e STF já incluídos) e se agrada ou não o eleitor. "Negociar apoio" libera emendas para os partidos indecisos; a negociação partido a partido fica em "avançado".
+- **Mundo**: missões, acordos comerciais, alianças, sanções, guerras e ONU. **Cúpulas obrigatórias** (presidente): Mercosul (2º e 4º trimestres), BRICS e Assembleia Geral da ONU (3º trimestre) e COP30 em Belém (2025); em cada uma você escolhe a posição do Brasil (catálogo em `data/cupulas.py`).
+- **Criação da partida**: 5 etapas (cargo, partido, ideologia, personagem e revisão). Promessas, duração e cenário são opcionais, em "Opções avançadas".
 - **Tutorial**: abre na primeira partida e pode ser revisto pelo botão Tutorial; o menu tem a tela **Como jogar**.
-- Mandato de 16 trimestres, no máximo 2 consecutivos. RUN **curta** (1 mandato), **média** (2) ou **longa** (2 + eleição do sucessor).
-- **Multiplayer**: quem cria a sala é o **presidente**. Quem entra como **governador** escolhe um estado, partido e ideologia e joga a própria partida estadual (orçamento, Assembleia, leis, eventos e eleição), com a economia federal ligada à do presidente. Presidente e governadores interagem o tempo todo: o presidente envia verbas, propõe convênios e pede apoio político; os governadores pedem repasses, programas federais e Força Nacional, oferecem apoio e fecham consórcios entre si (o outro jogador aceita ou recusa). Também dá para entrar como ministro, parlamentar ou líder de outro país.
-- **Pronto**: o trimestre só avança quando **todos os jogadores online** clicam em "Estou pronto" (sozinho, o botão avança na hora). Quem fica offline deixa de bloquear; o presidente pode forçar o avanço. A aba **Sala** mostra quem está online e pronto, os pedidos e o chat; a tela se sincroniza a cada 3 s (`/api/jogos/<código>/sinal`).
+- **Multiplayer**: quem cria a sala é o **presidente**. Quem entra como **governador** escolhe um estado e joga a própria partida estadual, ligada à economia do presidente; os dois negociam verbas, convênios, programas federais, Força Nacional e apoio político, e governadores fecham consórcios entre si. Também dá para entrar como ministro, parlamentar ou líder de outro país.
+- **Pronto**: o trimestre só avança quando **todos os jogadores online** tocam em "Estou pronto" (sozinho, avança na hora). Quem fica offline não bloqueia; o presidente pode forçar o avanço.
+- Mandato de 16 trimestres, no máximo 2 consecutivos. Partida **curta** (até 2026), **média** (até 2030) ou **longa** (2 mandatos + eleição do sucessor).
 
 ## Expandir
 

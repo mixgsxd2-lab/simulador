@@ -9,9 +9,7 @@ const PASSOS = [
   { id: 'territorio', t: 'Território', sub: 'Clique em um estado no mapa oficial do IBGE.', so: 'governador' },
   { id: 'partido', t: 'Partido', sub: 'Partidos reais, com bancadas eleitas em 2022 — ou funde o seu.' },
   { id: 'ideologia', t: 'Ideologia', sub: 'Sua posição define aliados, adversários e o humor do mercado.' },
-  { id: 'plataforma', t: 'Plataforma', sub: 'Até 4 promessas feitas na campanha de 2022. Cumpri-las rende votos em 2026.' },
   { id: 'personagem', t: 'Personagem', sub: 'Crie a figura pública que vai subir a rampa.' },
-  { id: 'run', t: 'Partida', sub: 'Duração da RUN e cenário inicial.' },
   { id: 'revisao', t: 'Posse', sub: 'Você venceu a eleição de 2022. Revise e tome posse.' },
 ];
 const ICO_PROPOSTA = { reforma_tributaria: 'moedas', reforma_previdencia: 'relogio', renda_basica: 'coracao', anticorrupcao: 'justica', seguranca: 'escudo', saude: 'coracao',
@@ -182,7 +180,10 @@ const PASSO = {
       <div class="rotulo mt-g">Promessas</div><div class="linha mt">${props}</div>
       <p class="peq suave mt-g">${CFG.modo === 'presidente'
         ? 'Cenário alternativo: você venceu a eleição presidencial de 2022 (percentuais oficiais do TSE, com você no lugar do vencedor) e toma posse em 1º de janeiro de 2023. Em 2026 enfrenta os candidatos reais registrados no TSE.'
-        : 'Você venceu a eleição estadual de 2022 e toma posse em 1º de janeiro de 2023. Em 2026 disputa a reeleição.'} Na primeira partida, um tutorial explica cada sistema.</p></div></div>`;
+        : 'Você venceu a eleição estadual de 2022 e toma posse em 1º de janeiro de 2023. Em 2026 disputa a reeleição.'} Na primeira partida, um tutorial explica cada sistema.</p>
+      <details class="avancado-menu" ${UIm.avancado ? 'open' : ''} data-avancado="1"><summary>${icone('ajustes', 'p')} Opções avançadas <span class="fraco peq">(opcional: promessas, duração e cenário)</span></summary>
+        <div class="rotulo mt">Promessas de campanha</div><p class="mini fraco">Cumpri-las rende votos na eleição. Pode deixar em branco.</p>${PASSO.plataforma()}
+        <div class="mt-g">${PASSO.run()}</div></details></div></div>`;
   },
 };
 
@@ -342,14 +343,12 @@ RENDER.ajuda = () => {
   const sec = (ic, t, txt) => `<section class="vidro painel entra"><div class="painel-cab"><span class="ico-caixa">${icone(ic)}</span><h2>${t}</h2></div><div class="peq suave">${txt}</div></section>`;
   $('#tela-ajuda').innerHTML = `<div class="conteudo">${topoTela('Como jogar', 'Os sistemas do jogo em poucos minutos')}
     <div class="grade g2">
-    ${sec('urna', '1. A história começa em 2022', '<p>Você venceu a eleição de 2022 (no modo presidente, com os percentuais oficiais do TSE e você no lugar do vencedor) e toma posse em <b>1º de janeiro de 2023</b>. O mandato dura 16 trimestres. No 2º trimestre de 2026 começa a campanha, e em outubro de 2026 você enfrenta os <b>candidatos reais</b> registrados no TSE, exceto o do seu partido. A votação é simulada.</p>')}
-    ${sec('raio', '2. Trimestres e capital político', '<p>Cada clique em <b>Encerrar trimestre</b> avança três meses. Ações custam <b>capital político</b> (os raios no topo), que se recupera a cada trimestre, e mais rápido com popularidade e base no Congresso altas. Eventos inesperados pedem uma decisão antes de seguir.</p>')}
-    ${sec('palacio', '3. Governar', '<p>Na aba <b>Governo</b> você nomeia ministros (competência melhora a área; falta de integridade gera escândalos), faz comunicação e acompanha as manchetes. Dar ministérios a partidos aumenta o apoio deles.</p>')}
-    ${sec('economia', '4. Administrar o país', '<p>Na aba <b>Economia</b> você define impostos e o orçamento de cada área. Mais imposto = mais caixa, menos crescimento e popularidade. Sem caixa, o déficit vira dívida. A aba <b>População</b> mostra a aprovação por grupo social e os serviços públicos.</p>')}
-    ${sec('livro', '5. Criar leis', `<p>Na aba <b>Congresso</b> há ${Object.keys(CAT.leis).length} projetos de lei, de reformas econômicas a segurança, tecnologia e meio ambiente. Leis ordinárias precisam de maioria; emendas constitucionais, de 3/5. Negocie com os partidos (emendas, pressão, cargos) para formar maioria. O STF pode derrubar leis arriscadas.</p>`)}
-    ${sec('globo', '6. Diplomacia e cúpulas', '<p>Clique em um país para fazer missões diplomáticas, acordos comerciais, alianças, sanções ou guerra. O Brasil também participa <b>obrigatoriamente</b> das cúpulas do <b>Mercosul</b> (2 por ano), do <b>BRICS</b> e da <b>Assembleia Geral da ONU</b> (1 por ano), além da <b>COP30</b> em Belém (2025): quando chegam, você escolhe a posição do país, e isso afeta as relações com cada bloco, o prestígio na ONU e a economia.</p>')}
-    ${sec('justica', '7. Justiça e riscos', '<p>Investigações, vagas no STF e impeachment. Popularidade muito baixa, corrupção e falta de base no Congresso abrem caminho para o seu afastamento.</p>')}
-    ${sec('pessoas', '8. Multiplayer', '<p>Crie uma partida e passe o <b>código da sala</b> (no topo do jogo). Os amigos entram pelo menu Multiplayer como governador, ministro, parlamentar ou líder de outro país. Eles mandam pedidos que você aprova ou nega; líderes estrangeiros negociam acordos com você.</p>')}
+    ${sec('urna', '1. O objetivo', '<p>Você venceu a eleição de 2022 e governa desde janeiro de 2023. Em <b>outubro de 2026</b> há eleição. Chegue lá com <b>popularidade de 50% ou mais</b> para ser reeleito. Você enfrenta os candidatos reais de 2026.</p>')}
+    ${sec('raio', '2. Como funciona cada rodada', '<p>Cada rodada é um <b>trimestre</b>: você faz algumas ações, que gastam <b>pontos de ação ⚡</b>, e toca em <b>Encerrar trimestre</b>. Os pontos voltam a cada rodada. O painel <b>O que fazer agora</b>, na aba Início, sempre sugere as 3 melhores ações.</p>')}
+    ${sec('economia', '3. Economia', '<p>Dois tipos de botão: <b>baixar ou aumentar impostos</b> e escolher o orçamento (<b>austeridade, equilíbrio ou investimento</b>, mais uma área prioritária). Inflação ou caixa no vermelho? Austeridade. Economia fraca? Baixe impostos ou invista.</p>')}
+    ${sec('livro', '4. Leis', '<p>Cada lei mostra a <b>chance de aprovar</b> e se <b>agrada o eleitor</b>. Comece pelas recomendadas. Sem maioria? Use <b>Negociar apoio</b>. Leis aprovadas mudam o país e a sua popularidade.</p>')}
+    ${sec('globo', '5. Mundo', '<p>Toque num país para melhorar relações, fazer acordos ou alianças. As cúpulas do <b>Mercosul, BRICS e ONU</b> são obrigatórias: quando chegam, você escolhe a posição do Brasil.</p>')}
+    ${sec('pessoas', '6. Jogar com amigos', '<p>Crie uma partida e passe o <b>código da sala</b>. Os amigos entram como <b>governadores</b>, cada um com seu estado, e negociam verbas e apoio com você. O tempo só anda quando todos tocam em <b>Estou pronto</b>.</p>')}
     </div><div class="linha mt-g" style="justify-content:center"><button type="button" class="btn btn-ouro btn-grande" data-ir="novo">${icone('play', 'p')} Começar a governar</button></div></div>`;
 };
 
@@ -443,6 +442,7 @@ document.addEventListener('input', (ev) => {
   if (t.id === 'p-cor') { CFG.partido_cor = t.value; $('#ficha').innerHTML = ficha(); }
   if (['p-sigla', 'p-nome', 'p-num'].includes(t.id)) { lerInputs(); $('#ficha').innerHTML = ficha(); }
 });
+document.addEventListener('toggle', (ev) => { if (ev.target.dataset && ev.target.dataset.avancado) UIm.avancado = ev.target.open; }, true);
 document.addEventListener('change', (ev) => { if (ev.target.dataset.apcor) $('#controles-c').innerHTML = CRIADOR[UIm.abaC](); });
 
 RENDER.novo = renderNovo;

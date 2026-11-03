@@ -1,5 +1,5 @@
 /* Abas da tela de jogo. Estado global: G (pacote da API), CAT (catálogo), UI (estado local de interface). */
-const UI = { sel: null, nomeSel: '', destaque: null, catLei: 'todas', vista: {}, draft: null };
+const UI = { sel: null, nomeSel: '', destaque: null, catLei: 'todas', vista: {}, draft: null, subPais: 'povo', abertos: new Set() };
 const S = () => G.estado;
 const D = () => G.derivados;
 const NAC = () => G.estado.meta.escopo === 'nacional';
@@ -39,23 +39,67 @@ function delta(chave, inverso = false, d = 1) {
 const serie = (k) => S().historico.slice(-12).map((x) => x[k]);
 
 /* ---------- faixa de indicadores ---------- */
+const NIVEL_COR = { 'var(--verde)': 'bom', 'var(--ambar)': 'atenção', 'var(--vermelho)': 'ruim' };
 function vKpis() {
   const s = S(), e = s.economia, c = s.campanha;
-  const k = (rot, ico, val, sub, cor, sp) => `<div class="vidro kpi"><div class="rotulo">${icone(ico, 'p')}${rot}</div><div class="valor" style="color:${cor || 'inherit'}">${val}</div><div class="delta">${sub}</div>${sp || ''}</div>`;
+  const k = (rot, ico, val, cor, extra = '', dica = '') => `<div class="vidro kpi" title="${esc(dica)}"><div class="rotulo">${icone(ico, 'p')}${rot}</div><div class="valor" style="color:${cor || 'inherit'}">${val}</div>
+    <div class="delta">${NIVEL_COR[cor] ? `<b style="color:${cor}">${NIVEL_COR[cor]}</b> ` : ''}${extra}</div></div>`;
   if (s.meta.fase === 'campanha') {
     const pos = c.pesquisa.findIndex((x) => x.id === 'jogador') + 1;
-    return `<div class="faixa-kpi">${k('Pesquisa', 'urna', pos + 'º lugar', pct(c.pesquisa[pos - 1]?.pct || 0, 1) + ' das intenções', pos === 1 ? 'var(--verde)' : '')}
-      ${k('Reconhecimento', 'olho', pct(c.reconhecimento), 'conhecem seu nome')}${k('Rejeição', 'alerta', pct(c.rejeicao), 'não votariam em você', c.rejeicao > 40 ? 'var(--vermelho)' : '')}
-      ${k('Fundo de campanha', 'moedas', nf(c.fundo, 0), 'pontos para gastar')}${k('Até a eleição', 'calendario', c.turnos_restantes, 'trimestres')}</div>`;
+    return `<div class="faixa-kpi">${k('Pesquisa', 'urna', pos + 'º lugar', pos === 1 ? 'var(--verde)' : 'var(--ambar)', pct(c.pesquisa[pos - 1]?.pct || 0, 1))}
+      ${k('Reconhecimento', 'olho', pct(c.reconhecimento), '', 'conhecem você')}${k('Rejeição', 'alerta', pct(c.rejeicao), corEstado(c.rejeicao, 25, 40, true))}
+      ${k('Fundo', 'moedas', nf(c.fundo, 0), '', 'para campanha')}${k('Eleição', 'calendario', c.turnos_restantes, '', 'trimestres')}</div>`;
   }
-  return `<div class="faixa-kpi">
-    ${k('Popularidade', 'coracao', pct(s.popularidade), delta('popularidade'), corEstado(s.popularidade, 55, 35), sparkline(serie('popularidade'), 'var(--ouro)'))}
-    ${k('Crescimento', 'economia', pct(e.crescimento, 1), delta('crescimento') + ' a.a.', corEstado(e.crescimento, 2, .5), sparkline(serie('crescimento'), 'var(--verde)'))}
-    ${k('Inflação', 'grafico', pct(e.inflacao, 1), delta('inflacao', true), corEstado(e.inflacao, 4.5, 6.5, true), sparkline(serie('inflacao'), 'var(--vermelho)'))}
-    ${k('Desemprego', 'pasta', pct(e.desemprego, 1), delta('desemprego', true), corEstado(e.desemprego, 8, 11, true), sparkline(serie('desemprego'), 'var(--ambar)'))}
-    ${k('Dívida / PIB', 'moedas', pct(e.divida_pib), delta('divida_pib', true), corEstado(e.divida_pib, 70, 95, true))}
-    ${k('Caixa', 'moedas', bi(e.caixa), 'resultado ' + bi(e.resultado), e.resultado < 0 ? 'var(--ambar)' : 'var(--verde)')}
-    ${k(NAC() ? 'Base na Câmara' : 'Base na Assembleia', 'congresso', pct(D().apoio_baixa), D().apoio_baixa >= 50 ? '<span class="bom">maioria</span>' : '<span class="alerta">minoria</span>', corEstado(D().apoio_baixa, 50, 30))}</div>`;
+  return `<div class="faixa-kpi kpi-5">
+    ${k('Popularidade', 'coracao', pct(s.popularidade), corEstado(s.popularidade, 50, 35), delta('popularidade'), 'Decide a eleição. Tente manter acima de 50%.')}
+    ${k('Economia', 'economia', pct(e.crescimento, 1), corEstado(e.crescimento, 2, .5), 'crescimento', 'Crescimento do PIB por ano.')}
+    ${k('Inflação', 'grafico', pct(e.inflacao, 1), corEstado(e.inflacao, 4.5, 6.5, true), 'ao ano', 'Preços subindo. Acima de 6,5% irrita o eleitor.')}
+    ${k('Caixa', 'moedas', bi(e.caixa), e.caixa > 50 && e.resultado >= -20 ? 'var(--verde)' : e.caixa > 0 ? 'var(--ambar)' : 'var(--vermelho)', '', 'Dinheiro disponível. Sem caixa, o governo se endivida.')}
+    ${k(NAC() ? 'Congresso' : 'Assembleia', 'congresso', pct(D().apoio_baixa), corEstado(D().apoio_baixa, 50, 30), D().apoio_baixa >= 50 ? 'maioria' : 'minoria', 'Parte dos deputados que apoia o governo. Com maioria, suas leis passam.')}</div>`;
+}
+
+/* ---------- objetivo e "o que fazer agora" ---------- */
+function leisRecomendadas(n = 3) {
+  const s = S(), em = new Set(s.congresso.leis_aprovadas.map((l) => l.id)), ch = D().chance_leis || {};
+  const recentes = new Set([...s.congresso.leis_rejeitadas, ...s.congresso.leis_derrubadas].filter((l) => s.meta.turno - l.turno < 2).map((l) => l.id));
+  return Object.entries(ch).filter(([id, c]) => !em.has(id) && !recentes.has(id) && c >= 0.5 && CAT.leis[id].custo <= Math.max(s.capital, 1))
+    .sort((a, b) => (CAT.leis[b[0]].pop > 0) - (CAT.leis[a[0]].pop > 0) || b[1] - a[1]).slice(0, n).map(([id, c]) => ({ id, chance: c, ...CAT.leis[id] }));
+}
+function dicas() {
+  const s = S(), e = s.economia, j = s.justica, out = [];
+  const add = (urg, ico, txt, aba, extra = '') => out.push({ urg, ico, txt, aba, extra });
+  if (j.impeachment.processo) add(10, 'alerta', 'Há um processo de impeachment! Negocie votos para se salvar.', 'pais', 'data-sub="justica"');
+  if (s.campanha.ativa) add(9, 'urna', 'Campanha em andamento: faça comícios, TV e o debate (painel acima).', 'governo');
+  const vagos = Object.values(s.ministros).filter((m) => !m).length;
+  if (vagos && s.meta.fase !== 'campanha') add(8, 'pasta', `${vagos} ministério(s) sem titular: toque no cartão vazio e nomeie alguém.`, 'governo');
+  if (j.investigacoes.some((i) => i.status === 'aberta' && !i.resposta)) add(7, 'justica', 'Há uma investigação sem resposta. Cooperar costuma ser o mais seguro.', 'pais', 'data-sub="justica"');
+  if (D().apoio_baixa < 50) add(7, 'congresso', 'Você não tem maioria: use "Negociar apoio" na aba Congresso.', 'congresso');
+  if (e.inflacao > 6.5) add(6, 'grafico', 'Inflação alta: aumente impostos ou escolha "Austeridade" no orçamento.', 'economia');
+  if (e.caixa <= 0 || e.resultado < -60) add(6, 'moedas', 'O caixa está no vermelho: escolha "Austeridade" ou aumente impostos.', 'economia');
+  if (e.crescimento < 1) add(5, 'economia', 'Economia fraca: baixar impostos ou escolher "Investimento" ajuda a crescer.', 'economia');
+  if (j.vaga_stf) add(5, 'justica', 'Abriu uma vaga no STF: indique um ministro.', 'pais', 'data-sub="justica"');
+  if ((s.diplomacia.propostas || []).length) add(4, 'globo', 'Um país enviou uma proposta: responda na aba Mundo.', 'diplomacia');
+  const promessa = s.jogador.propostas.map((pid) => CAT.propostas[pid]).find((p) => p.lei && !s.congresso.leis_aprovadas.some((l) => l.id === p.lei));
+  if (promessa && s.meta.fase !== 'campanha') add(4, 'urna', `Cumpra sua promessa: aprove "${CAT.leis[promessa.lei].nome}".`, 'congresso');
+  const rec = leisRecomendadas(1)[0];
+  if (rec && s.capital >= 2 && s.meta.fase !== 'campanha') add(s.popularidade < 50 ? 6 : 3, 'livro', `Boa lei para aprovar agora: "${rec.nome}" (${nf(rec.chance * 100, 0)}% de chance${rec.pop > 0 ? ', agrada o eleitor' : ''}).`, 'congresso');
+  if (s.popularidade < 45 && s.meta.fase !== 'campanha') add(5, 'megafone', 'Popularidade baixa: faça publicidade (painel Comunicação) e aprove leis populares.', 'governo');
+  return out.sort((a, b) => b.urg - a.urg).slice(0, 3);
+}
+function painelObjetivo() {
+  const s = S(), m = s.meta;
+  if (m.fase !== 'governo' || m.encerrado) return '';
+  const disputa = m.mandato < 2 || m.duracao === 'longa';
+  const falta = 16 - m.turno_mandato, anoEleicao = m.ano + Math.floor((m.trimestre + 14 - m.turno_mandato) / 4);
+  const quem = disputa && m.mandato >= 2 ? 'Eleja seu sucessor' : disputa ? 'Vença a reeleição' : 'Termine o mandato com o país em ordem';
+  const lista = dicas().map((d) => `<button type="button" class="dica" data-fn="mudarAba" data-aba="${d.aba}" ${d.extra}>${icone(d.ico, 'p')}<span class="flex1">${esc(d.txt)}</span>${icone('dir', 'p')}</button>`).join('')
+    || `<div class="dica ok">${icone('check', 'p')}<span>Tudo em ordem. Aprove leis, faça diplomacia ou guarde ações e encerre o trimestre.</span></div>`;
+  return `<section class="vidro painel objetivo"><div class="linha entre nw"><div><span class="rotulo">${icone('trofeu', 'p')} Objetivo</span>
+      <h2 class="titulo-display" style="font-size:1.25rem;margin:4px 0">${quem}${disputa ? ` em ${anoEleicao}` : ''}</h2>
+      <div class="mini fraco">${disputa ? `Faltam ${falta} trimestre(s). Chegue à eleição com popularidade de 50% ou mais.` : `Faltam ${falta} trimestre(s) para o fim do mandato.`}</div></div>
+      <div class="meta-pop" title="Popularidade">${UIc.anel(s.popularidade, 100, 'popular.', corEstado(s.popularidade, 50, 35), 74, pct(s.popularidade))}</div></div>
+    <div class="rotulo mt">O que fazer agora</div><div class="dicas">${lista}</div>
+    <p class="mini fraco mt mb0">Cada ação gasta ${icone('raio', 'p')} pontos de ação (você tem <b>${s.capital}</b>). Quando terminar, toque em <b>${G.mp.pronto.total > 1 ? 'Estou pronto' : 'Encerrar trimestre'}</b>.</p></section>`;
 }
 
 /* ---------- mapas ---------- */
@@ -99,17 +143,10 @@ function painelCampanha() {
     <div class="rotulo">Pesquisa de intenção de voto</div>${linhas}
     <div class="linha mt"><span class="chip">${icone('moedas', 'p')} Fundo ${nf(c.fundo, 0)}</span><span class="chip">${icone('olho', 'p')} Reconhecimento ${pct(c.reconhecimento)}</span>
       <span class="chip">${icone('alerta', 'p')} Rejeição ${pct(c.rejeicao)}</span><span class="chip">${icone('aperto', 'p')} Coalizão: ${c.coalizao.length ? c.coalizao.join(', ') : '—'}</span></div>
-    <div class="acoes-campanha mt">${acao('comicio', 'megafone', 'Comício', '1 capital · 15 fundo')}${acao('tv', 'olho', 'Propaganda na TV', '1 capital · 30 fundo')}${acao('redes', 'chat', 'Redes sociais', '1 capital · 10 fundo')}
-      ${acao('ataque', 'mira', 'Atacar rival', '1 capital · 20 fundo')}${acao('debate', 'pessoas', c.debate_feito ? 'Debate feito' : 'Debate na TV', s.meta.fase === 'campanha' ? 'últimos 2 trimestres' : '1 capital')}</div>
+    <div class="acoes-campanha mt">${acao('comicio', 'megafone', 'Comício', '1 ação · 15 fundo')}${acao('tv', 'olho', 'Propaganda na TV', '1 ação · 30 fundo')}${acao('redes', 'chat', 'Redes sociais', '1 ação · 10 fundo')}
+      ${acao('ataque', 'mira', 'Atacar rival', '1 ação · 20 fundo')}${acao('debate', 'pessoas', c.debate_feito ? 'Debate feito' : 'Debate na TV', s.meta.fase === 'campanha' ? 'últimos 2 trimestres' : '1 ação')}</div>
     <div class="linha mt nw"><select id="ali-sel">${livres.map((p) => `<option value="${esc(p.sigla)}">${esc(p.sigla)} — ${esc(p.nome)} (${p.baixa} dep.)</option>`).join('')}</select>
       ${PODE() ? bF('Aliança (2)', 'fecharAlianca', 'btn-ouro', '', 'aperto') : ''}</div></section>`;
-}
-function painelSelecaoMapa() {
-  const s = S(), x = UI.sel && s.diplomacia.entidades[UI.sel];
-  if (!x) return '';
-  return `<div class="vidro max cartao-sel"><div class="linha entre nw"><b>${esc(x.nome)}</b>${bF('', 'fecharSel', 'btn-icone btn-mini btn-fantasma', 'aria-label="Fechar"', 'x')}</div>
-    <div class="mini fraco">${esc(x.bloco)}${x.lider ? ' · ' + esc(x.lider) : ''}</div>${UIc.barra('Relação', x.rel, corRelacao(x.rel))}
-    ${bF('Abrir diplomacia', 'irDiplomacia', 'btn-mini btn-ouro', '', 'seta')}</div>`;
 }
 function vGabinete() {
   const s = S();
@@ -122,21 +159,6 @@ function vGabinete() {
   }).join('');
   return UIc.painel(NAC() ? 'Ministérios' : 'Secretarias', 'pasta', `<div class="gabinete">${cards}</div><p class="mini fraco mt mb0">C = competência · I = integridade. Clique para nomear ou trocar.</p>`, { sub: 'Partidos com cargos apoiam mais o governo' });
 }
-function vAgenda() {
-  const s = S(), j = s.justica, itens = [];
-  if (s.evento) itens.push(`<div class="dossie"><b>${icone('alerta', 'p')} ${esc(s.evento.titulo)}</b><div class="peq suave">Decisão pendente.</div></div>`);
-  if (j.impeachment.processo) itens.push(`<div class="processo"><b class="ruim">${icone('alerta', 'p')} Processo de impeachment em curso</b><div class="peq">Veja a aba Justiça.</div></div>`);
-  if (j.vaga_stf) itens.push(`<div class="dossie"><b>${icone('justica', 'p')} Vaga aberta no STF</b><div class="peq suave">Indique um ministro na aba Justiça.</div></div>`);
-  const props = (s.diplomacia.propostas || []).length;
-  if (props) itens.push(`<div class="dossie"><b>${icone('globo', 'p')} ${props} proposta(s) de outros ${NAC() ? 'países' : 'estados'}</b><div class="peq suave">Aceite ou recuse na aba Diplomacia antes que expirem.</div></div>`);
-  if (s.meta.fase === 'governo' && !s.campanha.ativa && (s.meta.mandato < 2 || s.meta.duracao === 'longa') && s.meta.turno_mandato < 13) {
-    const falta = 13 - s.meta.turno_mandato, anoEleicao = s.meta.ano + Math.floor((s.meta.trimestre + 14 - s.meta.turno_mandato) / 4);
-    itens.push(`<div class="dossie"><b>${icone('urna', 'p')} Eleição de ${anoEleicao}</b><div class="peq suave">A campanha começa em ${falta} trimestre(s). Popularidade alta e promessas cumpridas rendem votos.</div></div>`);
-  }
-  const vagos = Object.values(s.ministros).filter((m) => !m).length;
-  if (vagos && s.meta.fase !== 'campanha') itens.push(`<div class="dossie"><b>${icone('pasta', 'p')} ${vagos} pasta(s) sem titular</b><div class="peq suave">Setores sem ministro pioram a cada trimestre.</div></div>`);
-  return itens.length ? UIc.painel('Agenda', 'calendario', itens.join('')) : '';
-}
 function vManchetes(n = 8) {
   const ic = { bom: 'check', ruim: 'alerta', evento: 'raio', info: 'jornal' };
   const l = S().noticias.slice(0, n).map((x) => `<div class="manchete ${x.tipo}"><span class="ic">${icone(ic[x.tipo] || 'jornal', 'p')}</span><div><div class="data">${x.ano} · ${x.tri}º TRIMESTRE</div><p>${esc(x.texto)}</p></div></div>`).join('');
@@ -145,13 +167,9 @@ function vManchetes(n = 8) {
 function vGoverno() {
   const s = S();
   const comunic = s.meta.fase === 'campanha' ? '' : UIc.painel('Comunicação', 'megafone', `<div class="grupo-btn">${bA('Publicidade', 'publicidade', { tipo: 'tv' }, 'btn-mini', '', 'olho')}${bA('Cadeia nacional', 'publicidade', { tipo: 'cadeia' }, 'btn-mini', '', 'megafone')}${bA('Pressionar mídia', 'publicidade', { tipo: 'pressionar' }, 'btn-mini btn-perigo', '', 'jornal')}</div>
-    <p class="mini fraco mt mb0">Publicidade: 1 capital + R$ 25 bi · Cadeia: 2 capital · Pressão: 2 capital e desgaste.</p>`);
-  const mapa = `<section class="vidro mapa-painel"><div class="painel-cab"><span class="ico-caixa">${icone(NAC() ? 'globo' : 'mapa')}</span><div class="flex1"><h2>${NAC() ? 'Mapa-múndi' : 'Mapa do Brasil'}</h2>
-    <div class="mini fraco">${NAC() ? 'Relações do Brasil com o mundo' : 'Relações de ' + esc(s.meta.rotulo) + ' com os demais estados'}</div></div></div>
-    <div style="position:relative"><div id="mapa-gov"></div><div id="sel-gov">${painelSelecaoMapa()}</div></div>
-    <div class="legenda-rel"><span>hostil</span><i></i><span>aliado</span></div></section>`;
-  return `${painelCampanha() ? `<div class="mb0" style="margin-bottom:16px">${painelCampanha()}</div>` : ''}
-    <div class="layout-gov"><div class="coluna">${mapa}${vManchetes()}</div><div class="coluna">${vAgenda()}${vGabinete()}${comunic}</div></div>`;
+    <p class="mini fraco mt mb0">Sobem a popularidade. Publicidade: 1 ação + R$ 25 bi · Cadeia nacional: 2 ações · Pressionar a mídia: 2 ações, com desgaste.</p>`);
+  return `${painelObjetivo()}${painelCampanha() ? `<div class="mb0" style="margin-bottom:16px">${painelCampanha()}</div>` : ''}
+    <div class="layout-gov"><div class="coluna">${vGabinete()}${comunic}</div><div class="coluna">${vManchetes()}</div></div>`;
 }
 
 /* ---------- ECONOMIA ---------- */
@@ -166,7 +184,31 @@ function rosca(aloc) {
     <div class="legenda-rosca flex1">${ent.map(([k, v]) => `<span><i style="background:${CORES_SETOR[k]}"></i>${CAT.rotulo_setor[k]} <b>${nf((v / tot) * 100, 0)}%</b></span>`).join('')}</div></div>`;
 }
 const controle = (grp, id, rot, val, min, max, step, txt) => `<div class="controle"><span class="suave">${rot}</span><input type="range" data-sl="${grp}:${id}" min="${min}" max="${max}" step="${step}" value="${val}" style="--p:${((val - min) / (max - min)) * 100}%" ${PODE() ? '' : 'disabled'}><span class="v" data-out="${grp}:${id}">${txt}</span></div>`;
+const aberto = (id) => (UI.abertos.has(id) ? 'open' : '');
+const NIVEIS = { austeridade: ['Austeridade', 'Gasta menos: sobra caixa e a inflação cai, mas os serviços pioram.'],
+  equilibrio: ['Equilíbrio', 'Gasto normal.'], investimento: ['Investimento', 'Gasta mais: serviços e economia melhoram, mas o caixa cai.'] };
 function vEconomia() {
+  const s = S(), e = s.economia, o = s.orcamento, nivel = o.nivel || 'equilibrio', prio = o.prioridade || '';
+  const ind = (rot, v, cor, dica) => `<div class="ind" title="${esc(dica)}"><span class="rotulo">${rot}</span><b style="color:${cor}">${v}</b><span class="mini" style="color:${cor}">${NIVEL_COR[cor] || ''}</span></div>`;
+  const indicadores = UIc.painel('Como está a economia', 'economia', `<div class="inds">
+    ${ind('Crescimento', pct(e.crescimento, 1), corEstado(e.crescimento, 2, .5), 'PIB por ano')}${ind('Inflação', pct(e.inflacao, 1), corEstado(e.inflacao, 4.5, 6.5, true), 'Preços')}
+    ${ind('Desemprego', pct(e.desemprego, 1), corEstado(e.desemprego, 8, 11, true), '')}${ind('Dívida', pct(e.divida_pib) + ' do PIB', corEstado(e.divida_pib, 70, 95, true), '')}
+    ${ind('Caixa', bi(e.caixa), e.caixa > 50 ? 'var(--verde)' : e.caixa > 0 ? 'var(--ambar)' : 'var(--vermelho)', '')}${ind('Saldo do trimestre', bi(e.resultado), e.resultado >= 0 ? 'var(--verde)' : e.resultado > -40 ? 'var(--ambar)' : 'var(--vermelho)', '')}</div>
+    ${NAC() ? '' : `<p class="mini fraco mt mb0">A economia do estado acompanha a do país: crescimento ${pct(s.federal.crescimento, 1)}, inflação ${pct(s.federal.inflacao, 1)}.</p>`}`);
+  const impostos = UIc.painel('Impostos', 'justica', `<p class="peq suave">Carga atual: <b>${pct(D().carga, 1)} do PIB</b>.</p>
+    <div class="grade g2">${bA(`${icone('menos', 'p')} Baixar impostos`, 'politica_fiscal', { direcao: 'baixar' }, 'btn-grande escolha-acao', '')}${bA(`${icone('mais', 'p')} Aumentar impostos`, 'politica_fiscal', { direcao: 'aumentar' }, 'btn-grande escolha-acao', '')}</div>
+    <p class="mini fraco mt mb0"><b>Baixar</b>: economia e popularidade sobem, entra menos dinheiro. <b>Aumentar</b>: mais dinheiro no caixa, mas a economia e a popularidade sofrem. Custa 1 ação.</p>`);
+  const niveis = Object.entries(NIVEIS).map(([k, [t, d]]) => `<button type="button" class="opcao-simples ${nivel === k ? 'sel' : ''}" data-a="plano_orcamento" data-p='${JSON.stringify({ nivel: k })}' ${PODE() ? '' : 'disabled'}><b>${t}</b><small>${d}</small></button>`).join('');
+  const setores = ['', ...CAT.setores].map((k) => `<button type="button" class="opcao-simples mini-op ${prio === k ? 'sel' : ''}" data-a="plano_orcamento" data-p='${JSON.stringify({ prioridade: k || 'nenhuma' })}' ${PODE() ? '' : 'disabled'}>${k ? icone(ICO_SETOR[k], 'p') : ''}<b>${k ? CAT.rotulo_setor[k] : 'Nenhuma'}</b></button>`).join('');
+  const orcamento = UIc.painel('Orçamento', 'grafico', `<div class="rotulo">Quanto gastar</div><div class="opcoes-simples">${niveis}</div>
+    <div class="rotulo mt-g">Área prioritária</div><div class="opcoes-simples setores">${setores}</div>
+    <p class="mini fraco mt mb0">A área prioritária recebe mais dinheiro e melhora mais rápido a cada trimestre. Mudar o orçamento é grátis.</p>`);
+  const bc = NAC() ? UIc.painel('Juros (Banco Central)', 'moedas', `<p class="peq suave">Selic: <b>${pct(e.selic, 1)}</b>. Juros altos seguram a inflação, mas freiam a economia.</p>${bA('Pressionar por juros menores (2)', 'pressionar_bc', {}, 'btn-mini btn-perigo', '', 'alerta')}
+    <p class="mini fraco mt mb0">Funciona, mas o mercado perde confiança.</p>`) : '';
+  return `<div class="grade g2"><div class="coluna">${indicadores}${impostos}${bc}</div><div class="coluna">${orcamento}</div></div>
+    <details class="avancado mt" data-det="eco-av" ${aberto('eco-av')}><summary>${icone('ajustes', 'p')} Ajuste fino (avançado)</summary>${vEconomiaAvancada()}</details>`;
+}
+function vEconomiaAvancada() {
   const s = S(), e = s.economia;
   if (!UI.draft) resetDraft();
   const dr = UI.draft;
@@ -184,7 +226,7 @@ function vEconomia() {
     ${UIc.painel('Resultado fiscal do trimestre', 'moedas', `<div class="fluxo">${fluxo}</div><div class="sep"></div><div class="linha entre"><span class="rotulo">Resultado</span>
       <b class="titulo-display ${e.resultado < 0 ? 'ruim' : 'bom'}" style="font-size:1.5rem">${bi(e.resultado)}</b></div><p class="mini fraco mb0">Déficit de ${pct(e.deficit_pib, 1)} do PIB. Sem caixa, o déficit vira dívida.</p>`)}</div>
     <div class="coluna">${UIc.painel('Impostos', 'justica', Object.keys(rotImp).map((k) => controle('imp', k, rotImp[k], dr.imp[k], 0, 45, .5, pct(dr.imp[k], 1))).join('') +
-      `<div class="linha entre mt"><span class="mini fraco">Mais impostos: mais caixa, menos crescimento e popularidade.</span>${bA('Aplicar (1 capital)', 'ajustar_impostos', {}, 'btn-ouro btn-mini', 'data-fn="aplicarImpostos"', 'check')}</div>`)}
+      `<div class="linha entre mt"><span class="mini fraco">Mais impostos: mais caixa, menos crescimento e popularidade.</span>${bA('Aplicar (1 ação)', 'ajustar_impostos', {}, 'btn-ouro btn-mini', 'data-fn="aplicarImpostos"', 'check')}</div>`)}
     ${UIc.painel('Orçamento discricionário', 'grafico', `${controle('gasto', 'x', 'Nível de gasto', dr.gasto, 15, 45, .5, pct(dr.gasto, 1))}<div class="sep"></div>
       <div id="rosca">${rosca(dr.aloc)}</div><div class="mt">${Object.keys(dr.aloc).filter((k) => NAC() || k !== 'defesa').map((k) => controle('aloc', k, CAT.rotulo_setor[k], dr.aloc[k], 0, 60, 1, pct((dr.aloc[k] / soma) * 100))).join('')}</div>
       <div class="linha entre mt"><span class="mini fraco">Áreas bem financiadas melhoram a cada trimestre.</span>${bA('Aplicar orçamento', 'ajustar_orcamento', {}, 'btn-ouro btn-mini', 'data-fn="aplicarOrcamento"', 'check')}</div>`)}</div></div>`;
@@ -213,31 +255,47 @@ function vJustica() {
 }
 
 /* ---------- CONGRESSO ---------- */
+function cartaoLei(id, l, chance, i = 0) {
+  const s = S(), c = s.congresso, vig = c.leis_aprovadas.some((x) => x.id === id);
+  const esp = [...c.leis_rejeitadas, ...c.leis_derrubadas].some((x) => x.id === id && s.meta.turno - x.turno < 2);
+  const pc = Math.round((chance || 0) * 100), cor = corEstado(pc, 65, 35);
+  const efeito = l.pop > 0 ? '<span class="selo bom">agrada o eleitor</span>' : l.pop < 0 ? '<span class="selo alerta">impopular</span>' : '';
+  return `<div class="lei-card ${vig ? 'vigor' : ''}"><div class="linha nw">${icone(ICO_CAT[l.cat] || 'livro')}<b class="flex1">${esc(l.nome)}</b></div><small>${esc(l.desc)}</small>
+    <div class="linha">${efeito}<span class="selo ouro">${icone('raio', 'p')}${l.custo} ${l.custo > 1 ? 'ações' : 'ação'}</span></div>
+    ${vig ? `<span class="selo bom">${icone('check', 'p')} Em vigor</span>` : `<div class="chance-lei"><span class="mini">Chance de aprovar</span>${UIc.medidor(pc, 100, cor)}<b style="color:${cor}">${pc}%</b></div>
+      ${bA(esp ? 'Aguarde 2 trimestres' : 'Enviar ao Congresso', 'propor_lei', { lei: id }, 'btn-mini btn-ouro', esp ? 'disabled' : '', 'seta')}`}</div>`;
+}
 function vCongresso() {
-  const s = S(), c = s.congresso, d = D(), alta = c.total_alta > 0;
-  const filtro = [['', 'Todos'], ['base', 'Base'], ['independente', 'Independentes'], ['oposição', 'Oposição']].map(([k, t]) => `<button type="button" class="filtro ${(UI.destaque || '') === k ? 'ativo' : ''}" data-fn="destacar" data-v="${k}">${t}</button>`).join('');
+  const s = S(), c = s.congresso, d = D(), alta = c.total_alta > 0, ch = d.chance_leis || {};
+  const indecisos = d.partidos.filter((p) => p.posicao === 'independente' && !p.jogador).length;
+  const resumo = UIc.painel(NAC() ? 'Seu apoio no Congresso' : 'Seu apoio na Assembleia', 'congresso', `<div class="linha nw" style="gap:18px">${UIc.anel(d.apoio_baixa, 100, 'apoio', corEstado(d.apoio_baixa, 50, 30), 92, pct(d.apoio_baixa))}
+      <div class="flex1"><b>${d.apoio_baixa >= 50 ? 'Você tem maioria.' : 'Você não tem maioria.'}</b><p class="peq suave mb0">${d.apoio_baixa >= 50 ? 'A maioria das suas leis deve passar.' : 'Leis polêmicas tendem a ser rejeitadas.'} Há ${indecisos} partido(s) indeciso(s).</p></div></div>
+    <div class="linha mt">${bA('Negociar apoio (R$ 20 bi · 1 ação)', 'negociar_base', {}, 'btn-ouro', indecisos ? '' : 'disabled', 'aperto')}</div>
+    <p class="mini fraco mt mb0">Libera emendas para os partidos indecisos: as chances de todas as leis sobem. Dar ministérios a partidos também ajuda.</p>`);
+  const uv = c.ultima_votacao;
+  const votacao = uv ? `<div class="vidro forte painel" style="margin-bottom:14px"><div class="rotulo">Última votação · ${esc(CAT.leis[uv.lei].nome)}</div><div class="votacao mt">${Object.entries(uv.resultado).map(([k, r]) => `<b>${k === 'baixa' ? (NAC() ? 'Câmara' : 'Assembleia') : 'Senado'}</b>${UIc.medidor(r.sim, r.total, r.aprovou ? 'var(--verde)' : 'var(--vermelho)')}<span class="num">${r.sim}/${r.total} ${r.aprovou ? '✔' : '✖'}</span>`).join('')}</div></div>` : '';
+  const recs = leisRecomendadas(3);
+  const recomendadas = recs.length ? `<div class="rotulo">Recomendadas agora</div><div class="grade gauto mt">${recs.map((l) => cartaoLei(l.id, CAT.leis[l.id], l.chance)).join('')}</div>` : '';
+  const leisEsc = Object.entries(CAT.leis).filter(([, l]) => l.escopos.includes(s.meta.escopo));
+  const cats = [...new Set(leisEsc.map(([, l]) => l.cat))];
+  const grupos = cats.map((cat) => {
+    const doTema = leisEsc.filter(([, l]) => l.cat === cat).sort((a, b) => (ch[b[0]] || 0) - (ch[a[0]] || 0));
+    const vig = doTema.filter(([id]) => c.leis_aprovadas.some((x) => x.id === id)).length;
+    return `<details class="tema" data-det="lei-${esc(cat)}" ${aberto('lei-' + cat)}><summary>${icone(ICO_CAT[cat] || 'livro', 'p')}<b class="flex1">${esc(cat)}</b><span class="mini fraco">${doTema.length} leis${vig ? ` · ${vig} em vigor` : ''}</span></summary>
+      <div class="grade gauto mt">${doTema.map(([id, l]) => cartaoLei(id, l, ch[id])).join('')}</div></details>`;
+  }).join('');
   const legenda = d.partidos.filter((p) => p.baixa >= (alta ? 8 : 2)).map((p) => `<span><i style="background:${p.cor}"></i>${esc(p.sigla)} ${p.baixa}</span>`).join('');
   const casa = (nome, k, total, ap) => `<div class="casa">${hemiciclo(d.partidos, k, total, UI.destaque)}<div class="num-casa">${total}</div><div class="rotulo">${nome}</div><div class="peq mt">Base do governo: <b style="color:${corEstado(ap, 50, 30)}">${pct(ap)}</b></div></div>`;
   const tabela = d.partidos.map((p) => `<tr><td><div class="linha nw">${UIc.logo(p, 34)}<div><b>${esc(p.sigla)}</b>${p.jogador ? ' <span class="selo ouro">seu partido</span>' : ''}<div class="mini fraco">${esc(p.nome)}</div></div></div></td>
-    <td class="num">${p.baixa}${alta ? ` / ${p.alta}` : ''}</td><td style="min-width:120px">${UIc.medidor(p.afin, 100, p.posicao === 'base' ? 'var(--verde)' : p.posicao === 'oposição' ? 'var(--vermelho)' : 'var(--ambar)', true)}<span class="mini fraco">${nf(p.afin, 0)} · ${p.posicao}</span></td>
-    <td style="white-space:nowrap;text-align:right">${bA('Emendas', 'negociar', { tipo: 'emendas', partido: p.sigla, valor: 10 }, 'btn-mini', 'title="R$ 10 bi · 1 capital"', 'moedas')} ${bA('', 'negociar', { tipo: 'pressionar', partido: p.sigla }, 'btn-mini btn-icone', 'title="Pressionar (1 capital)" aria-label="Pressionar"', 'megafone')}</td></tr>`).join('');
-  const aprov = new Set(c.leis_aprovadas.map((l) => l.id));
-  const recentes = new Set([...c.leis_rejeitadas, ...c.leis_derrubadas].filter((l) => s.meta.turno - l.turno < 2).map((l) => l.id));
-  const leisEsc = Object.entries(CAT.leis).filter(([, l]) => l.escopos.includes(s.meta.escopo));
-  const cats = [...new Set(leisEsc.map(([, l]) => l.cat))];
-  const catBtns = ['todas', ...cats].map((k) => `<button type="button" class="filtro ${UI.catLei === k ? 'ativo' : ''}" data-fn="catLei" data-v="${esc(k)}">${k === 'todas' ? 'Todas' : esc(k)}</button>`).join('');
-  const leis = leisEsc.filter(([, l]) => UI.catLei === 'todas' || l.cat === UI.catLei).map(([id, l], i) => {
-    const vig = aprov.has(id), esp = recentes.has(id);
-    return `<div class="lei-card entra ${vig ? 'vigor' : ''}" style="--i:${i}"><div class="linha nw">${icone(ICO_CAT[l.cat] || 'livro')}<b class="flex1">${esc(l.nome)}</b></div><small>${esc(l.desc)}</small>
-      <div class="linha"><span class="selo">${l.tipo === 'emenda' ? 'Emenda · 3/5' : 'Lei ordinária'}</span><span class="selo ouro">${icone('raio', 'p')}${l.custo}</span>${l.risco >= .25 ? '<span class="selo ruim">risco no STF</span>' : ''}</div>
-      ${vig ? '<span class="selo bom">' + icone('check', 'p') + ' Em vigor</span>' : bA(esp ? 'Aguarde' : 'Enviar ao Congresso', 'propor_lei', { lei: id }, 'btn-mini btn-ouro', esp ? 'disabled' : '', 'seta')}</div>`;
-  }).join('');
-  const uv = c.ultima_votacao;
-  const votacao = uv ? `<div class="vidro forte painel mb0" style="margin-bottom:14px"><div class="rotulo">Última votação · ${esc(CAT.leis[uv.lei].nome)}</div><div class="votacao mt">${Object.entries(uv.resultado).map(([k, r]) => `<b>${k === 'baixa' ? (NAC() ? 'Câmara' : 'Assembleia') : 'Senado'}</b>${UIc.medidor(r.sim, r.total, r.aprovou ? 'var(--verde)' : 'var(--vermelho)')}<span class="num">${r.sim}/${r.total} ${r.aprovou ? '✔' : '✖'}</span>`).join('')}</div></div>` : '';
-  return `${UIc.painel(NAC() ? 'Congresso Nacional' : 'Assembleia Legislativa', 'congresso', `<div class="filtros">${filtro}</div><div class="casas">${casa(NAC() ? 'Câmara dos Deputados' : 'Deputados estaduais', 'baixa', c.total_baixa, d.apoio_baixa)}${alta ? casa('Senado Federal', 'alta', c.total_alta, d.apoio_alta) : ''}</div>
-    <div class="legenda-partidos">${legenda}</div>`, { sub: NAC() ? 'Bancadas iniciais: eleição de 2022 (TSE), com fusões' : 'Cadeiras distribuídas pela simulação', acoes: '<span class="selo fato">Composição real</span>' })}
-    <div class="grade mt layout-cong"><div>${UIc.painel('Projetos de lei', 'livro', `${votacao}<div class="filtros">${catBtns}</div><div class="grade gauto">${leis}</div>`, { sub: `Capital político disponível: ${s.capital}` })}</div>
-    <div>${UIc.painel('Partidos e negociação', 'aperto', `<div class="rolagem" style="max-height:640px;overflow-x:auto"><table class="tabela"><thead><tr><th>Partido</th><th>${alta ? 'Dep./Sen.' : 'Cadeiras'}</th><th>Afinidade</th><th></th></tr></thead><tbody>${tabela}</tbody></table></div>`)}</div></div>`;
+    <td class="num">${p.baixa}${alta ? ` / ${p.alta}` : ''}</td><td style="min-width:120px">${UIc.medidor(p.afin, 100, p.posicao === 'base' ? 'var(--verde)' : p.posicao === 'oposição' ? 'var(--vermelho)' : 'var(--ambar)', true)}<span class="mini fraco">${p.posicao}</span></td>
+    <td style="white-space:nowrap;text-align:right">${bA('Emendas', 'negociar', { tipo: 'emendas', partido: p.sigla, valor: 10 }, 'btn-mini', 'title="R$ 10 bi · 1 ação"', 'moedas')} ${bA('', 'negociar', { tipo: 'pressionar', partido: p.sigla }, 'btn-mini btn-icone', 'title="Pressionar (1 ação)" aria-label="Pressionar"', 'megafone')}</td></tr>`).join('');
+  return `<div class="grade g2 layout-cong"><div class="coluna">${resumo}
+    ${UIc.painel('Projetos de lei', 'livro', `${votacao}${recomendadas}<div class="rotulo mt-g">Todas as leis por tema</div>${grupos}
+      <p class="mini fraco mt mb0">Emendas constitucionais precisam de 3/5 dos votos. Leis polêmicas podem ser derrubadas pelo STF (já incluído na chance).</p>`, { sub: `Você tem ${s.capital} ação(ões) neste trimestre` })}</div>
+    <div class="coluna">${UIc.painel(NAC() ? 'Plenário' : 'Assembleia', 'congresso', `<div class="casas">${casa(NAC() ? 'Câmara dos Deputados' : 'Deputados estaduais', 'baixa', c.total_baixa, d.apoio_baixa)}${alta ? casa('Senado Federal', 'alta', c.total_alta, d.apoio_alta) : ''}</div>
+      <div class="legenda-partidos">${legenda}</div>`, { sub: NAC() ? 'Bancadas eleitas em 2022 (TSE), com fusões' : 'Cadeiras distribuídas pela simulação' })}
+    <details class="avancado" data-det="partidos" ${aberto('partidos')}><summary>${icone('aperto', 'p')} Negociar partido a partido (avançado)</summary>
+      <div class="rolagem" style="max-height:640px;overflow-x:auto"><table class="tabela"><thead><tr><th>Partido</th><th>${alta ? 'Dep./Sen.' : 'Cadeiras'}</th><th>Posição</th><th></th></tr></thead><tbody>${tabela}</tbody></table></div></details></div></div>`;
 }
 
 /* ---------- DIPLOMACIA ---------- */
@@ -354,6 +412,15 @@ function vEstatisticas() {
     <div class="mt">${UIc.painel('Histórico eleitoral', 'urna', el ? `<div style="overflow-x:auto"><table class="tabela"><thead><tr><th>Ano</th><th>Disputa</th><th>Resultado</th><th></th></tr></thead><tbody>${el}</tbody></table></div>` : UIc.vazio('Nenhuma eleição disputada ainda.', 'urna'))}</div>`;
 }
 
+/* ---------- PAÍS (povo, justiça e gráficos numa aba só) ---------- */
+function vPais() {
+  const s = S(), j = s.justica, sub = UI.subPais || 'povo';
+  const alerta = j.impeachment.processo || j.vaga_stf || j.investigacoes.some((i) => i.status === 'aberta' && !i.resposta);
+  const abas = [['povo', 'pessoas', 'Povo'], ['justica', 'justica', 'Justiça'], ['graficos', 'grafico', 'Gráficos']]
+    .map(([k, ic, t]) => `<button type="button" class="filtro ${sub === k ? 'ativo' : ''}" data-fn="subPais" data-v="${k}">${icone(ic, 'p')} ${t}${k === 'justica' && alerta ? ' <span class="selo ruim">!</span>' : ''}</button>`).join('');
+  return `<div class="filtros">${abas}</div>${{ povo: vPopulacao, justica: vJustica, graficos: vEstatisticas }[sub]()}`;
+}
+
 /* ---------- SALA (MULTIPLAYER) ---------- */
 function pendenciasSala() {
   return G.pedidos.filter((p) => p.status === 'pendente' && euDecido(p)).length + (G.mp.propostas_para_mim || []).length;
@@ -442,10 +509,11 @@ function vConfig() {
       <div class="grupo-btn mt">${m.encerrado ? bF('Ver relatório final', 'verRelatorio', 'btn-ouro', '', 'trofeu') : bA('Encerrar partida', 'encerrar_run', {}, 'btn-perigo', 'data-confirmar="Encerrar esta partida agora e ver o relatório?"', 'sair')}<a class="btn" href="/">${icone('palacio', 'p')}Menu inicial</a></div>`)}</div></div>`;
 }
 
-const VIEWS = { governo: vGoverno, economia: vEconomia, justica: vJustica, congresso: vCongresso, diplomacia: vDiplomacia, populacao: vPopulacao, estatisticas: vEstatisticas, sala: vSala, config: vConfig };
-const ABAS = [['governo', 'palacio', 'Governo'], ['economia', 'economia', 'Economia'], ['justica', 'justica', 'Justiça'], ['congresso', 'congresso', 'Congresso'],
-  ['diplomacia', 'globo', 'Diplomacia'], ['populacao', 'pessoas', 'População'], ['estatisticas', 'grafico', 'Estatísticas'], ['sala', 'link', 'Sala'], ['config', 'ajustes', 'Ajustes']];
+const VIEWS = { governo: vGoverno, economia: vEconomia, congresso: vCongresso, diplomacia: vDiplomacia, pais: vPais, sala: vSala, config: vConfig };
+const ABAS = [['governo', 'palacio', 'Início'], ['economia', 'economia', 'Economia'], ['congresso', 'congresso', 'Congresso'], ['diplomacia', 'globo', 'Mundo'],
+  ['pais', 'pessoas', 'País'], ['sala', 'link', 'Sala'], ['config', 'ajustes', 'Ajustes']];
+/* abas antigas (salvas no navegador) -> nova aba e sub-aba */
+const ABAS_ANTIGAS = { justica: ['pais', 'justica'], populacao: ['pais', 'povo'], estatisticas: ['pais', 'graficos'] };
 const POS_RENDER = {
-  governo: () => montarMapa('mapa-gov', () => { $('#sel-gov').innerHTML = painelSelecaoMapa(); }),
   diplomacia: () => montarMapa('mapa-diplo', () => { $('#painel-ent').innerHTML = painelEntidade(); $$('.lista-ent tr').forEach((r) => r.classList.toggle('ativa', r.dataset.id === UI.sel)); }),
 };
